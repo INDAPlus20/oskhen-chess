@@ -33,22 +33,23 @@ pub mod Units {
 
 }
 
-pub mod board {
+
+pub mod Board {
 
 use super::Units;
-use std::fmt;
+use std::{fmt, fs};
 
     #[derive(Debug, Copy, Clone)]
     pub struct Square {
         Piece: Units::Piece,
     }
     #[derive(Copy, Clone)]
-    pub struct Board {
+    pub struct BoardState {
         matrix: [[Square; 8]; 8],
     }
 
-    impl Board {
-        pub fn new() -> Board {
+    impl BoardState {
+        pub fn new() -> BoardState {
 
             let empty_square: Square = Square{
                 Piece: Units::Piece{
@@ -84,13 +85,19 @@ use std::fmt;
                 };
             }
 
-            let init_board: Board = Board{
+            let init_board: BoardState = BoardState{
                 matrix: init_matrix,
             };
 
             init_board
         }
+        pub fn read(filename: String) {
+            let contents = fs::read_to_string(filename).expect("Panic at reading file"); //TODO: Error handling
+            // Transform contents to 64 objects, split 8x8. Then 1:1 transform to Boardstate
+            println!("{}", contents);
+        }
     }
+
 
     impl Square {
         fn is_empty(&self) -> bool {
@@ -112,7 +119,7 @@ use std::fmt;
         }
     }
 
-    impl fmt::Display for Board {
+    impl fmt::Display for BoardState {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
             let mut formatted_string = String::new();
             for line in self.matrix.iter() {

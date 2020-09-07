@@ -1,6 +1,7 @@
-use rustchessian::board;
+use rustchessian::Board;
 
 fn main(){
-    let start = board::Board::new();
+    let start = Board::BoardState::new();
     println!("{}", start);
+    Board::BoardState::read(String::from("game"));
 }
