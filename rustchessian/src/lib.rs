@@ -56,7 +56,7 @@ pub mod Board {
             };
 
             let mut init_matrix = [[empty_square; 8]; 8];
-            for team in 0..2 {
+            for team in 0..2 { //dw, will remove
                 init_matrix[team * 7][0].Piece.Rank = Units::Rank::Rook;
                 init_matrix[team * 7][1].Piece.Rank = Units::Rank::Knight;
                 init_matrix[team * 7][2].Piece.Rank = Units::Rank::Bishop;
