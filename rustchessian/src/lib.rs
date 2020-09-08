@@ -47,14 +47,50 @@ pub mod Board {
     }
 
     impl BoardState {
-        pub fn new() -> BoardState {
-            let empty_square: Square = Square {
+
+        fn init_empty() -> Square {
+            Square {
                 Piece: Units::Piece {
                     Rank: Units::Rank::Empty,
                     Color: Units::Color::Empty,
                 },
+            }
+        }
+
+        fn blockstate_to_square(object: &str) -> Square {
+            let empty_square = BoardState::init_empty();
+            if object.eq("XX") {
+                return empty_square;
+            }
+
+            let rank = match object.chars().nth(0).unwrap() {
+                'P' => Units::Rank::Pawn,
+                'R' => Units::Rank::Rook,
+                'N' => Units::Rank::Knight,
+                'B' => Units::Rank::Bishop,
+                'Q' => Units::Rank::Queen,
+                'K' => Units::Rank::King,
+                _ => panic!("Piece signature not valid!")
             };
 
+            let color = match object.chars().nth(1).unwrap() {
+                'B' => Units::Color::Black,
+                'W' => Units::Color::White,
+                _ => panic!("Color signature not valid!")
+            };
+
+            Square {
+                Piece: Units::Piece {
+                    Rank: rank,
+                    Color: color,
+                },
+            }
+        }
+
+
+        pub fn new() -> BoardState {
+
+            let empty_square = BoardState::init_empty();
             let mut init_matrix = [[empty_square; 8]; 8];
             for team in 0..2 { //dw, will remove
                 init_matrix[team * 7][0].Piece.Rank = Units::Rank::Rook;
@@ -82,18 +118,41 @@ pub mod Board {
                 };
             }
 
-            let init_board: BoardState = BoardState {
+            BoardState {
                 matrix: init_matrix,
-            };
+            }
 
-            init_board
         }
-        pub fn read(filename: String) {
+        pub fn read(filename: String) -> BoardState {
             let contents = fs::read_to_string(filename).expect("Panic at reading file"); //TODO: Error handling
             let contents = contents.replace("\n", " ");
-            let mut objects: Vec<&str> = contents.trim().split(" ").collect();
+
+            let string_objects: Vec<&str> = contents.trim().split(" ").collect();
+
+            let boardsize = string_objects.len();
+            if boardsize != 64 {
+                panic!("Invalid gamestate file: expected 64 squares, got {}", boardsize)
+            }
+
+            let mut square_objects =  Vec::<Square>::new();
+            let mut square_matrix = [[BoardState::init_empty(); 8]; 8];
+
+            for object in string_objects{
+                let this_square = BoardState::blockstate_to_square(object);
+                square_objects.push(this_square);
+            }
+
+            for line in 0..8{
+                for block in 0..8{
+                    square_matrix[line][block] = square_objects[8*line + block];
+                }
+            }
             // Transform contents to 64 objects, split 8x8. Then 1:1 transform to Boardstate
-            println!("{:?}", objects);
+
+            BoardState {
+                matrix: square_matrix,
+            }
+
         }
     }
 
