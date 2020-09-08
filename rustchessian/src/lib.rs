@@ -10,7 +10,7 @@ mod tests {
 
 pub mod Units {
     #[derive(Debug, Copy, Clone)]
-    pub enum Rank{
+    pub enum Rank {
         Empty,
         Pawn,
         Rook,
@@ -26,18 +26,16 @@ pub mod Units {
         Black,
     }
     #[derive(Debug, Copy, Clone)]
-    pub struct Piece{
+    pub struct Piece {
         pub Rank: Rank,
         pub Color: Color,
     }
-
 }
-
 
 pub mod Board {
 
-use super::Units;
-use std::{fmt, fs};
+    use super::Units;
+    use std::{fmt, fs};
 
     #[derive(Debug, Copy, Clone)]
     pub struct Square {
@@ -50,42 +48,41 @@ use std::{fmt, fs};
 
     impl BoardState {
         pub fn new() -> BoardState {
-
-            let empty_square: Square = Square{
-                Piece: Units::Piece{
+            let empty_square: Square = Square {
+                Piece: Units::Piece {
                     Rank: Units::Rank::Empty,
                     Color: Units::Color::Empty,
-                }
+                },
             };
 
             let mut init_matrix = [[empty_square; 8]; 8];
-            for team in 0..2{
-                init_matrix[team*7][0].Piece.Rank = Units::Rank::Rook;
-                init_matrix[team*7][1].Piece.Rank = Units::Rank::Knight;
-                init_matrix[team*7][2].Piece.Rank = Units::Rank::Bishop;
-                init_matrix[team*7][3].Piece.Rank = Units::Rank::Queen;
-                init_matrix[team*7][4].Piece.Rank = Units::Rank::King;
-                init_matrix[team*7][5].Piece.Rank = Units::Rank::Bishop;
-                init_matrix[team*7][6].Piece.Rank = Units::Rank::Knight;
-                init_matrix[team*7][7].Piece.Rank = Units::Rank::Rook;
+            for team in 0..2 {
+                init_matrix[team * 7][0].Piece.Rank = Units::Rank::Rook;
+                init_matrix[team * 7][1].Piece.Rank = Units::Rank::Knight;
+                init_matrix[team * 7][2].Piece.Rank = Units::Rank::Bishop;
+                init_matrix[team * 7][3].Piece.Rank = Units::Rank::Queen;
+                init_matrix[team * 7][4].Piece.Rank = Units::Rank::King;
+                init_matrix[team * 7][5].Piece.Rank = Units::Rank::Bishop;
+                init_matrix[team * 7][6].Piece.Rank = Units::Rank::Knight;
+                init_matrix[team * 7][7].Piece.Rank = Units::Rank::Rook;
             }
 
-            for i in 0..8{
+            for i in 0..8 {
                 init_matrix[0][i].Piece.Color = Units::Color::Black;
-                init_matrix[1][i].Piece = Units::Piece{
+                init_matrix[1][i].Piece = Units::Piece {
                     Rank: Units::Rank::Pawn,
                     Color: Units::Color::Black,
                 };
             }
-            for i in 0..8{
+            for i in 0..8 {
                 init_matrix[7][i].Piece.Color = Units::Color::White;
-                init_matrix[6][i].Piece = Units::Piece{
+                init_matrix[6][i].Piece = Units::Piece {
                     Rank: Units::Rank::Pawn,
                     Color: Units::Color::White,
                 };
             }
 
-            let init_board: BoardState = BoardState{
+            let init_board: BoardState = BoardState {
                 matrix: init_matrix,
             };
 
@@ -93,15 +90,16 @@ use std::{fmt, fs};
         }
         pub fn read(filename: String) {
             let contents = fs::read_to_string(filename).expect("Panic at reading file"); //TODO: Error handling
+            let contents = contents.replace("\n", " ");
+            let mut objects: Vec<&str> = contents.trim().split(" ").collect();
             // Transform contents to 64 objects, split 8x8. Then 1:1 transform to Boardstate
-            println!("{}", contents);
+            println!("{:?}", objects);
         }
     }
 
-
     impl Square {
         fn is_empty(&self) -> bool {
-            if let Units::Rank::Empty = self.Piece.Rank{
+            if let Units::Rank::Empty = self.Piece.Rank {
                 return true;
             }
             false
@@ -109,18 +107,17 @@ use std::{fmt, fs};
     }
 
     impl fmt::Display for Square {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
-            if self.is_empty(){
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            if self.is_empty() {
                 return write!(f, "{}", "_");
-            }
-            else {
+            } else {
                 return write!(f, "{}", self.Piece.Rank as i32);
             }
         }
     }
 
     impl fmt::Display for BoardState {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let mut formatted_string = String::new();
             for line in self.matrix.iter() {
                 for entry in line {
@@ -130,6 +127,5 @@ use std::{fmt, fs};
             }
             write!(f, "{}", formatted_string)
         }
-
     }
 }
