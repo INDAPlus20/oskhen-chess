@@ -31,6 +31,13 @@ pub mod Units {
         pub Color: Color,
     }
 
+    pub fn init_empty_piece() -> Piece {
+        Piece {
+                Rank: Rank::Empty,
+                Color: Color::Empty,
+        }
+    }   
+
     impl Piece {
         pub fn r#move(&self) {
             let rank = self.Rank;
@@ -73,11 +80,12 @@ pub mod Units {
 pub mod Board {
 
     use super::Units;
-    use std::{fmt, fs};
+    use std::{fmt, fs, convert::TryInto};
 
     #[derive(Debug, Copy, Clone)]
     pub struct Square {
-        Piece: Units::Piece,
+        piece: Units::Piece,
+        coordinate: (isize, isize),
     }
     #[derive(Copy, Clone)]
     pub struct BoardState {
@@ -86,19 +94,18 @@ pub mod Board {
 
     impl BoardState {
 
-        fn init_empty() -> Square {
-            Square {
-                Piece: Units::Piece {
-                    Rank: Units::Rank::Empty,
-                    Color: Units::Color::Empty,
-                },
+        fn init_empty_square() -> Square {
+            let piece = Units::init_empty_piece();
+            Square{
+                piece: piece,
+                coordinate: (-1, -1),
             }
         }
 
-        fn blockstate_to_square(object: &str) -> Square {
-            let empty_square = BoardState::init_empty();
+        fn blockstate_to_piece(object: &str) -> Units::Piece {
+            let empty_piece = Units::init_empty_piece();
             if object.eq("XX") {
-                return empty_square;
+                return empty_piece;
             }
 
             let rank = match object.chars().nth(0).unwrap() {
@@ -117,39 +124,36 @@ pub mod Board {
                 _ => panic!("Color signature not valid!")
             };
 
-            Square {
-                Piece: Units::Piece {
+            Units::Piece {
                     Rank: rank,
                     Color: color,
-                },
-            }
+                }
         }
 
         pub fn new() -> BoardState {
-
-            let empty_square = BoardState::init_empty();
+            let empty_square = BoardState::init_empty_square();
             let mut init_matrix = [[empty_square; 8]; 8];
             for team in 0..2 { //dw, will remove
-                init_matrix[team * 7][0].Piece.Rank = Units::Rank::Rook;
-                init_matrix[team * 7][1].Piece.Rank = Units::Rank::Knight;
-                init_matrix[team * 7][2].Piece.Rank = Units::Rank::Bishop;
-                init_matrix[team * 7][3].Piece.Rank = Units::Rank::Queen;
-                init_matrix[team * 7][4].Piece.Rank = Units::Rank::King;
-                init_matrix[team * 7][5].Piece.Rank = Units::Rank::Bishop;
-                init_matrix[team * 7][6].Piece.Rank = Units::Rank::Knight;
-                init_matrix[team * 7][7].Piece.Rank = Units::Rank::Rook;
+                init_matrix[team * 7][0].piece.Rank = Units::Rank::Rook;
+                init_matrix[team * 7][1].piece.Rank = Units::Rank::Knight;
+                init_matrix[team * 7][2].piece.Rank = Units::Rank::Bishop;
+                init_matrix[team * 7][3].piece.Rank = Units::Rank::Queen;
+                init_matrix[team * 7][4].piece.Rank = Units::Rank::King;
+                init_matrix[team * 7][5].piece.Rank = Units::Rank::Bishop;
+                init_matrix[team * 7][6].piece.Rank = Units::Rank::Knight;
+                init_matrix[team * 7][7].piece.Rank = Units::Rank::Rook;
             }
 
             for i in 0..8 {
-                init_matrix[0][i].Piece.Color = Units::Color::Black;
-                init_matrix[1][i].Piece = Units::Piece {
+                init_matrix[0][i].piece.Color = Units::Color::Black;
+                init_matrix[1][i].piece = Units::Piece {
                     Rank: Units::Rank::Pawn,
                     Color: Units::Color::Black,
                 };
             }
             for i in 0..8 {
-                init_matrix[7][i].Piece.Color = Units::Color::White;
-                init_matrix[6][i].Piece = Units::Piece {
+                init_matrix[7][i].piece.Color = Units::Color::White;
+                init_matrix[6][i].piece = Units::Piece {
                     Rank: Units::Rank::Pawn,
                     Color: Units::Color::White,
                 };
@@ -171,17 +175,21 @@ pub mod Board {
                 panic!("Invalid gamestate file: expected 64 squares, got {}", boardsize)
             }
 
-            let mut square_objects =  Vec::<Square>::new();
-            let mut square_matrix = [[BoardState::init_empty(); 8]; 8];
+            let mut piece_objects =  Vec::<Units::Piece>::new();
+            let mut square_matrix = [[BoardState::init_empty_square(); 8]; 8];
 
             for object in string_objects{
-                let this_square = BoardState::blockstate_to_square(object);
-                square_objects.push(this_square);
+                let this_piece = BoardState::blockstate_to_piece(object);
+                piece_objects.push(this_piece);
             }
 
             for line in 0..8{
                 for block in 0..8{
-                    square_matrix[line][block] = square_objects[8*line + block];
+                    let square: Square = Square {
+                        piece: piece_objects[8*line + block],
+                        coordinate: (line.try_into().unwrap(), block.try_into().unwrap()),
+                    };
+                    square_matrix[line][block] = square;
                 }
             }
             // Transform contents to 64 objects, split 8x8. Then 1:1 transform to Boardstate
@@ -195,19 +203,19 @@ pub mod Board {
 
     impl Square {
         fn is_empty(&self) -> bool {
-            if let Units::Rank::Empty = self.Piece.Rank {
+            if let Units::Rank::Empty = self.piece.Rank {
                 return true;
             }
             false
         }
     }
 
-    impl fmt::Display for Square {
+    impl fmt::Display for Square {  
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             if self.is_empty() {
                 return write!(f, "{}", "_");
             } else {
-                return write!(f, "{}", self.Piece.Rank as i32);
+                return write!(f, "{}", self.piece.Rank as i32);
             }
         }
     }
