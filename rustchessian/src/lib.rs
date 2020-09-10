@@ -31,7 +31,7 @@ mod tests {
         };
         assert_eq!(square.is_empty(), false);
     }
-    //#[test] - Test not working?
+    //#[test] - Should evaluate to true!
     fn origin_correctly_placed() {
         let game = Board::BoardState::read(String::from("game"));
         let color = game.matrix[0][0].piece.Color;
@@ -77,49 +77,96 @@ pub mod Units {
         use crate::Board;
 
         impl Board::BoardState {
-            pub fn r#move(&self, square: Board::Square) {
+            pub fn generate_moves(&self, square: Board::Square) {
+                println!("{}", square);
                 let rank = square.piece.Rank;
+                println!("{:?}", rank);
                 let coordinates = square.coordinate;
                 let moveset = match rank {
-                    Empty => panic!("Tried to move empty square!"),
-                    Pawn => move_pawn(coordinates, self),
-                    Rook => move_rook(coordinates, self),
-                    Knight => move_knight(coordinates, self),
-                    Bishop => move_bishop(coordinates, self),
-                    Queen => move_queen(coordinates, self),
-                    King => move_king(coordinates, self),
+                    Rank::Empty => panic!("Tried to move empty square!"),
+                    Rank::Pawn => move_pawn(coordinates, self),
+                    Rank::Rook => move_rook(coordinates, self),
+                    Rank::Knight => move_knight(coordinates, self),
+                    Rank::Bishop => move_bishop(coordinates, self),
+                    Rank::Queen => move_queen(coordinates, self),
+                    Rank::King => move_king(coordinates, self),
                 };
+            }
+            pub fn move_from_string(&self, square: String) {
+                let square = self.square_from_string(square);
+                self.generate_moves(square);
             }
         }
 
-        pub fn move_pawn(coordinates: (usize, usize), gamestate: &Board::BoardState) {
+        pub fn move_pawn(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
             let x = coordinates.0;
             let y = coordinates.1;
             let this_square = gamestate.matrix[x][y];
-            let team = this_square.piece.Color;
-            let available_moves: Vec<(isize, isize)> = Vec::new();
+            let team = match this_square.piece.Color { 
+                Color::White => "White",
+                Color::Black => "Black",
+                _ => panic!("Expected color!"),
+            };
+            let mut available_moves: Vec<(usize, usize)> = Vec::new();
 
+            let offset: i8;
+
+            if team == "White" {
+                offset = 1;
+            }
+            else {
+                offset = -1;
+            }
+
+            if gamestate.matrix[x][y+1].is_empty() {
+                println!("Forward is empty");
+                available_moves.push((x, y+offset));
+            }
+            else{
+                println!("here: {}, {}", x, y+offset);
+            }
+
+        available_moves            
+
+        }
+        pub fn move_rook(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
+            let mut available_moves: Vec<(usize, usize)> = Vec::new();
+            let x = coordinates.0;
+            let y = coordinates.1;
+            let this_square = gamestate.matrix[x][y];
+            available_moves
+
+        }
+        pub fn move_knight(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
+            let mut available_moves: Vec<(usize, usize)> = Vec::new();
+            let x = coordinates.0;
+            let y = coordinates.1;
+            let this_square = gamestate.matrix[x][y];
+            available_moves
             
+        }
+        pub fn move_bishop(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
+            let mut available_moves: Vec<(usize, usize)> = Vec::new();
+            let x = coordinates.0;
+            let y = coordinates.1;
+            let this_square = gamestate.matrix[x][y];
+            available_moves
 
         }
-        pub fn move_rook(coordinates: (usize, usize), gamestate: &Board::BoardState) {
-            let available_moves: Vec<(isize, isize)> = Vec::new();
+        pub fn move_queen(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
+            let mut available_moves: Vec<(usize, usize)> = Vec::new();
+            let x = coordinates.0;
+            let y = coordinates.1;
+            let this_square = gamestate.matrix[x][y];
+            available_moves
 
         }
-        pub fn move_knight(coordinates: (usize, usize), gamestate: &Board::BoardState) {
-            let available_moves: Vec<(isize, isize)> = Vec::new();
-            
-        }
-        pub fn move_bishop(coordinates: (usize, usize), gamestate: &Board::BoardState) {
-            let available_moves: Vec<(isize, isize)> = Vec::new();
-
-        }
-        pub fn move_queen(coordinates: (usize, usize), gamestate: &Board::BoardState) {
-            let available_moves: Vec<(isize, isize)> = Vec::new();
-
-        }
-        pub fn move_king(coordinates: (usize, usize), gamestate: &Board::BoardState) {
-            let available_moves: Vec<(isize, isize)> = Vec::new();
+        pub fn move_king(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
+            let mut available_moves: Vec<(usize, usize)> = Vec::new();
+            let x = coordinates.0;
+            let y = coordinates.1;
+            let this_square = gamestate.matrix[x][y];
+            available_moves
 
         }
     }
@@ -141,7 +188,16 @@ pub mod Board {
         pub matrix: [[Square; 8]; 8],
     }
 
+
+
     impl BoardState {
+
+        pub fn square_from_string(&self, pos: String) -> Square {
+
+            let pos: Vec<usize> = pos.split(",").map(|l| l.parse::<usize>().expect("Expected two coordinates")).collect();
+            self.matrix[pos[0]][pos[1]]
+    
+        }
 
         fn init_empty_square() -> Square {
             let piece = Units::init_empty_piece();
@@ -237,9 +293,9 @@ pub mod Board {
                 for block in 0..8{
                     let square: Square = Square {
                         piece: piece_objects[8*line + block],
-                        coordinate: (line, block),
+                        coordinate: (block, line),
                     };
-                    square_matrix[line][block] = square;
+                    square_matrix[block][line] = square;
                 }
             }
             // Transform contents to 64 objects, split 8x8. Then 1:1 transform to Boardstate
@@ -273,8 +329,10 @@ pub mod Board {
     impl fmt::Display for BoardState {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let mut formatted_string = String::new();
-            for line in self.matrix.iter() {
-                for entry in line {
+            for i in (0..8).rev() {
+                for j in 0..8 {
+                    let entry = self.matrix[j][i];
+                    //println!("{}, {}: {}", i, j, entry);
                     formatted_string.push_str(&String::from(format!("{} ", entry)));
                 }
                 formatted_string.push_str(&String::from(format!("\n")));
