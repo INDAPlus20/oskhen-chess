@@ -2,9 +2,43 @@ use std::fmt;
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
+    }
+    #[test]
+    fn square_is_empty(){
+        let empty_piece = Units::Piece {
+            Rank: Units::Rank::Empty,
+            Color: Units::Color::Empty,
+        };
+        let empty_square = Board::Square {
+            piece: empty_piece,
+            coordinate: (65, 65)
+        };
+        assert_eq!(empty_square.is_empty(), true);
+    }
+    #[test]
+    fn square_is_not_empty(){
+        let piece = Units::Piece {
+            Rank: Units::Rank::Rook,
+            Color: Units::Color::Black,
+        };
+        let square = Board::Square {
+            piece: piece,
+            coordinate: (65, 65)
+        };
+        assert_eq!(square.is_empty(), false);
+    }
+    //#[test] - Test not working?
+    fn origin_correctly_placed() {
+        let game = Board::BoardState::read(String::from("game"));
+        let color = game.matrix[0][0].piece.Color;
+        if let Units::Color::White = color {
+            assert!(true);
+        }
+        assert!(false, "Expected white, got {:?}", color);
     }
 }
 
@@ -38,39 +72,54 @@ pub mod Units {
         }
     }   
 
-    impl Piece {
-        pub fn r#move(&self) {
-            let rank = self.Rank;
-            let moveset = match rank {
-                Empty => panic!("Tried to move empty square!"),
-                Pawn => movements::move_pawn(self),
-                Rook => movements::move_rook(self),
-                Knight => movements::move_knight(self),
-                Bishop => movements::move_bishop(self),
-                Queen => movements::move_queen(self),
-                King => movements::move_king(self),
-            };
-        }
-    }
-
     mod movements {
         use super::*;
-        pub fn move_pawn(unit: &Piece) {
+        use crate::Board;
+
+        impl Board::BoardState {
+            pub fn r#move(&self, square: Board::Square) {
+                let rank = square.piece.Rank;
+                let coordinates = square.coordinate;
+                let moveset = match rank {
+                    Empty => panic!("Tried to move empty square!"),
+                    Pawn => move_pawn(coordinates, self),
+                    Rook => move_rook(coordinates, self),
+                    Knight => move_knight(coordinates, self),
+                    Bishop => move_bishop(coordinates, self),
+                    Queen => move_queen(coordinates, self),
+                    King => move_king(coordinates, self),
+                };
+            }
+        }
+
+        pub fn move_pawn(coordinates: (usize, usize), gamestate: &Board::BoardState) {
+            let x = coordinates.0;
+            let y = coordinates.1;
+            let this_square = gamestate.matrix[x][y];
+            let team = this_square.piece.Color;
+            let available_moves: Vec<(isize, isize)> = Vec::new();
+
+            
 
         }
-        pub fn move_rook(unit: &Piece) {
+        pub fn move_rook(coordinates: (usize, usize), gamestate: &Board::BoardState) {
+            let available_moves: Vec<(isize, isize)> = Vec::new();
 
         }
-        pub fn move_knight(unit: &Piece) {
+        pub fn move_knight(coordinates: (usize, usize), gamestate: &Board::BoardState) {
+            let available_moves: Vec<(isize, isize)> = Vec::new();
+            
+        }
+        pub fn move_bishop(coordinates: (usize, usize), gamestate: &Board::BoardState) {
+            let available_moves: Vec<(isize, isize)> = Vec::new();
 
         }
-        pub fn move_bishop(unit: &Piece) {
+        pub fn move_queen(coordinates: (usize, usize), gamestate: &Board::BoardState) {
+            let available_moves: Vec<(isize, isize)> = Vec::new();
 
         }
-        pub fn move_queen(unit: &Piece) {
-
-        }
-        pub fn move_king(unit: &Piece) {
+        pub fn move_king(coordinates: (usize, usize), gamestate: &Board::BoardState) {
+            let available_moves: Vec<(isize, isize)> = Vec::new();
 
         }
     }
@@ -80,16 +129,16 @@ pub mod Units {
 pub mod Board {
 
     use super::Units;
-    use std::{fmt, fs, convert::TryInto};
+    use std::{fmt, fs};
 
     #[derive(Debug, Copy, Clone)]
     pub struct Square {
-        piece: Units::Piece,
-        coordinate: (isize, isize),
+        pub piece: Units::Piece,
+        pub coordinate: (usize, usize),
     }
     #[derive(Copy, Clone)]
     pub struct BoardState {
-        matrix: [[Square; 8]; 8],
+        pub matrix: [[Square; 8]; 8],
     }
 
     impl BoardState {
@@ -98,7 +147,7 @@ pub mod Board {
             let piece = Units::init_empty_piece();
             Square{
                 piece: piece,
-                coordinate: (-1, -1),
+                coordinate: (65, 65),
             }
         }
 
@@ -168,7 +217,8 @@ pub mod Board {
             let contents = fs::read_to_string(filename).expect("Panic at reading file"); //TODO: Error handling
             let contents = contents.replace("\n", " ");
 
-            let string_objects: Vec<&str> = contents.trim().split(" ").collect();
+            let mut string_objects: Vec<&str> = contents.trim().split(" ").collect();
+            string_objects.reverse();
 
             let boardsize = string_objects.len();
             if boardsize != 64 {
@@ -187,7 +237,7 @@ pub mod Board {
                 for block in 0..8{
                     let square: Square = Square {
                         piece: piece_objects[8*line + block],
-                        coordinate: (line.try_into().unwrap(), block.try_into().unwrap()),
+                        coordinate: (line, block),
                     };
                     square_matrix[line][block] = square;
                 }
@@ -202,7 +252,7 @@ pub mod Board {
     }
 
     impl Square {
-        fn is_empty(&self) -> bool {
+        pub fn is_empty(&self) -> bool {
             if let Units::Rank::Empty = self.piece.Rank {
                 return true;
             }
@@ -229,7 +279,8 @@ pub mod Board {
                 }
                 formatted_string.push_str(&String::from(format!("\n")));
             }
-            write!(f, "{}", formatted_string)
+            let output: String = formatted_string.chars().rev().collect();
+            write!(f, "{}", output)
         }
     }
 }
