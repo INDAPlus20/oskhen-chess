@@ -30,6 +30,44 @@ pub mod Units {
         pub Rank: Rank,
         pub Color: Color,
     }
+
+    impl Piece {
+        pub fn r#move(&self) {
+            let rank = self.Rank;
+            let moveset = match rank {
+                Empty => panic!("Tried to move empty square!"),
+                Pawn => movements::move_pawn(self),
+                Rook => movements::move_rook(self),
+                Knight => movements::move_knight(self),
+                Bishop => movements::move_bishop(self),
+                Queen => movements::move_queen(self),
+                King => movements::move_king(self),
+            };
+        }
+    }
+
+    mod movements {
+        use super::*;
+        pub fn move_pawn(unit: &Piece) {
+
+        }
+        pub fn move_rook(unit: &Piece) {
+
+        }
+        pub fn move_knight(unit: &Piece) {
+
+        }
+        pub fn move_bishop(unit: &Piece) {
+
+        }
+        pub fn move_queen(unit: &Piece) {
+
+        }
+        pub fn move_king(unit: &Piece) {
+
+        }
+    }
+
 }
 
 pub mod Board {
@@ -86,7 +124,6 @@ pub mod Board {
                 },
             }
         }
-
 
         pub fn new() -> BoardState {
 
