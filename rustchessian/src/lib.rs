@@ -1,4 +1,6 @@
-use std::fmt;
+#![allow(dead_code)] // No annoying warnings
+
+use std::{convert::TryInto, fmt};
 
 #[cfg(test)]
 mod tests {
@@ -7,338 +9,309 @@ mod tests {
     fn it_works() {
         assert_eq!(2 + 2, 4);
     }
-    #[test]
-    fn square_is_empty(){
-        let empty_piece = Units::Piece {
-            Rank: Units::Rank::Empty,
-            Color: Units::Color::Empty,
-        };
-        let empty_square = Board::Square {
-            piece: empty_piece,
-            coordinate: (65, 65)
-        };
-        assert_eq!(empty_square.is_empty(), true);
-    }
-    #[test]
-    fn square_is_not_empty(){
-        let piece = Units::Piece {
-            Rank: Units::Rank::Rook,
-            Color: Units::Color::Black,
-        };
-        let square = Board::Square {
-            piece: piece,
-            coordinate: (65, 65)
-        };
-        assert_eq!(square.is_empty(), false);
-    }
-    //#[test] - Should evaluate to true!
-    fn origin_correctly_placed() {
-        let game = Board::BoardState::read(String::from("game"));
-        let color = game.matrix[0][0].piece.Color;
-        if let Units::Color::White = color {
-            assert!(true);
-        }
-        assert!(false, "Expected white, got {:?}", color);
-    }
 }
 
-pub mod Units {
-    #[derive(Debug, Copy, Clone)]
-    pub enum Rank {
-        Empty,
-        Pawn,
-        Rook,
-        Knight,
-        Bishop,
-        Queen,
-        King,
-    }
-    #[derive(Debug, Copy, Clone)]
-    pub enum Color {
-        Empty,
-        White,
-        Black,
-    }
-    #[derive(Debug, Copy, Clone)]
-    pub struct Piece {
-        pub Rank: Rank,
-        pub Color: Color,
-    }
-
-    pub fn init_empty_piece() -> Piece {
-        Piece {
-                Rank: Rank::Empty,
-                Color: Color::Empty,
-        }
-    }   
-
-    mod movements {
-        use super::*;
-        use crate::Board;
-
-        impl Board::BoardState {
-            pub fn generate_moves(&self, square: Board::Square) {
-                println!("{}", square);
-                let rank = square.piece.Rank;
-                println!("{:?}", rank);
-                let coordinates = square.coordinate;
-                let moveset = match rank {
-                    Rank::Empty => panic!("Tried to move empty square!"),
-                    Rank::Pawn => move_pawn(coordinates, self),
-                    Rank::Rook => move_rook(coordinates, self),
-                    Rank::Knight => move_knight(coordinates, self),
-                    Rank::Bishop => move_bishop(coordinates, self),
-                    Rank::Queen => move_queen(coordinates, self),
-                    Rank::King => move_king(coordinates, self),
-                };
-            }
-            pub fn move_from_string(&self, square: String) {
-                let square = self.square_from_string(square);
-                self.generate_moves(square);
-            }
-        }
-
-        pub fn move_pawn(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
-            let x = coordinates.0;
-            let y = coordinates.1;
-            let this_square = gamestate.matrix[x][y];
-            let team = match this_square.piece.Color { 
-                Color::White => "White",
-                Color::Black => "Black",
-                _ => panic!("Expected color!"),
-            };
-            let mut available_moves: Vec<(usize, usize)> = Vec::new();
-
-            let offset: i8;
-
-            if team == "White" {
-                offset = 1;
-            }
-            else {
-                offset = -1;
-            }
-
-            if gamestate.matrix[x][y+1].is_empty() {
-                println!("Forward is empty");
-                available_moves.push((x, y+offset));
-            }
-            else{
-                println!("here: {}, {}", x, y+offset);
-            }
-
-        available_moves            
-
-        }
-        pub fn move_rook(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
-            let mut available_moves: Vec<(usize, usize)> = Vec::new();
-            let x = coordinates.0;
-            let y = coordinates.1;
-            let this_square = gamestate.matrix[x][y];
-            available_moves
-
-        }
-        pub fn move_knight(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
-            let mut available_moves: Vec<(usize, usize)> = Vec::new();
-            let x = coordinates.0;
-            let y = coordinates.1;
-            let this_square = gamestate.matrix[x][y];
-            available_moves
-            
-        }
-        pub fn move_bishop(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
-            let mut available_moves: Vec<(usize, usize)> = Vec::new();
-            let x = coordinates.0;
-            let y = coordinates.1;
-            let this_square = gamestate.matrix[x][y];
-            available_moves
-
-        }
-        pub fn move_queen(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
-            let mut available_moves: Vec<(usize, usize)> = Vec::new();
-            let x = coordinates.0;
-            let y = coordinates.1;
-            let this_square = gamestate.matrix[x][y];
-            available_moves
-
-        }
-        pub fn move_king(coordinates: (usize, usize), gamestate: &Board::BoardState) -> Vec<(usize, usize)> {
-            let mut available_moves: Vec<(usize, usize)> = Vec::new();
-            let x = coordinates.0;
-            let y = coordinates.1;
-            let this_square = gamestate.matrix[x][y];
-            available_moves
-
-        }
-    }
-
+#[derive(Debug, Copy, Clone)]
+struct Square {
+    piece: Option<Piece>,
+    coordinate: (isize, isize),
+}
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum Team {
+    White,
+    Black,
+}
+#[derive(Debug)]
+pub struct Action {
+    from: Square,
+    to: Square,
+}
+#[derive(Debug, Copy, Clone)]
+struct Piece {
+    team: Team,
+    rank: Rank,
+}
+#[derive(Debug, Copy, Clone)]
+enum Rank {
+    Pawn,
+    Rook,
+    Knight,
+    Bishop,
+    Queen,
+    King,
 }
 
-pub mod Board {
+pub struct Game {
+    grid: [[Square; 8]; 8],
+    player: Team,
+    history: Vec<Action>,
+}
 
-    use super::Units;
-    use std::{fmt, fs};
-
-    #[derive(Debug, Copy, Clone)]
-    pub struct Square {
-        pub piece: Units::Piece,
-        pub coordinate: (usize, usize),
+fn valid_coordinates(x: isize, y:isize) -> bool {
+    if x < 0 || x > 7 || y < 0 || y > 7{
+        return false;
     }
-    #[derive(Copy, Clone)]
-    pub struct BoardState {
-        pub matrix: [[Square; 8]; 8],
+    true
+}
+
+fn not_same_team(team: Team, square: Square) -> bool {
+    if square.piece.is_some(){
+        if square.piece.unwrap().team != team{
+            return true;
+        }
+    }
+    false
+}
+
+impl Game {
+
+    pub fn move_from_string(&self, coordinate: &str) -> Vec<Action> {
+        let square = self.square_from_string(coordinate);
+        let moveset = self.generate_moves(square);
+        return moveset;
     }
 
+    fn square_from_string(&self, coordinate: &str) -> Square {
+        if coordinate.len() != 2 {
+            panic!("Invalid coordinate")
+        }
+        let column: usize = match coordinate.chars().nth(0).unwrap().to_ascii_lowercase() {
+            'a' => 0,
+            'b' => 1,
+            'c' => 2,
+            'd' => 3,
+            'e' => 4,
+            'f' => 5,
+            'g' => 6,
+            'h' => 7,
+            _ => panic!("invalid coordinate")
+        };
+        let row: usize = coordinate.chars().nth(1).unwrap().to_digit(10).expect("Invalid coordinate!") as usize;
+        let this_square = Square {
+            piece: self.grid[column][row-1].piece,
+            coordinate: self.grid[column][row-1].coordinate,
+        };
+        this_square
+    }
 
+    fn generate_moves(&self, square: Square) -> Vec<Action> {
+        let piece = match square.piece {
+            Some(i) => i,
+            None => panic!("Tried to move empty square!"),
+        };
 
-    impl BoardState {
-
-        pub fn square_from_string(&self, pos: String) -> Square {
-
-            let pos: Vec<usize> = pos.split(",").map(|l| l.parse::<usize>().expect("Expected two coordinates")).collect();
-            self.matrix[pos[0]][pos[1]]
-    
+        if self.player != piece.team {
+            panic!("Cannot move enemy piece!")
         }
 
-        fn init_empty_square() -> Square {
-            let piece = Units::init_empty_piece();
-            Square{
-                piece: piece,
-                coordinate: (65, 65),
-            }
-        }
+        let coordinates = square.coordinate;
+        let moveset: Vec<Action> = match piece.rank {
+            Rank::Pawn => self.gen_moveset_pawn(square),
+            Rank::Rook => self.gen_moveset_rook(square),
+            //Rank::Knight => move_knight(coordinates, self),
+            //Rank::Bishop => move_bishop(coordinates, self),
+            //Rank::Queen => move_queen(coordinates, self),
+            //Rank::King => move_king(coordinates, self),
+            _ => panic!("test"),
+        };
+        moveset
+    }
 
-        fn blockstate_to_piece(object: &str) -> Units::Piece {
-            let empty_piece = Units::init_empty_piece();
-            if object.eq("XX") {
-                return empty_piece;
-            }
+    // Add helper function - add if available!
 
-            let rank = match object.chars().nth(0).unwrap() {
-                'P' => Units::Rank::Pawn,
-                'R' => Units::Rank::Rook,
-                'N' => Units::Rank::Knight,
-                'B' => Units::Rank::Bishop,
-                'Q' => Units::Rank::Queen,
-                'K' => Units::Rank::King,
-                _ => panic!("Piece signature not valid!")
-            };
 
-            let color = match object.chars().nth(1).unwrap() {
-                'B' => Units::Color::Black,
-                'W' => Units::Color::White,
-                _ => panic!("Color signature not valid!")
-            };
+    fn gen_moveset_pawn(&self, this_square: Square) -> Vec<Action> {
+        let mut available_moves = Vec::<Action>::new();
+        let offset: isize = match self.player {
+            Team::White => 1,
+            Team::Black => -1,
+        };
+        let x = this_square.coordinate.0;
+        let y = this_square.coordinate.1; 
+        let y_forward = y + offset;
 
-            Units::Piece {
-                    Rank: rank,
-                    Color: color,
-                }
-        }
-
-        pub fn new() -> BoardState {
-            let empty_square = BoardState::init_empty_square();
-            let mut init_matrix = [[empty_square; 8]; 8];
-            for team in 0..2 { //dw, will remove
-                init_matrix[team * 7][0].piece.Rank = Units::Rank::Rook;
-                init_matrix[team * 7][1].piece.Rank = Units::Rank::Knight;
-                init_matrix[team * 7][2].piece.Rank = Units::Rank::Bishop;
-                init_matrix[team * 7][3].piece.Rank = Units::Rank::Queen;
-                init_matrix[team * 7][4].piece.Rank = Units::Rank::King;
-                init_matrix[team * 7][5].piece.Rank = Units::Rank::Bishop;
-                init_matrix[team * 7][6].piece.Rank = Units::Rank::Knight;
-                init_matrix[team * 7][7].piece.Rank = Units::Rank::Rook;
-            }
-
-            for i in 0..8 {
-                init_matrix[0][i].piece.Color = Units::Color::Black;
-                init_matrix[1][i].piece = Units::Piece {
-                    Rank: Units::Rank::Pawn,
-                    Color: Units::Color::Black,
+        if valid_coordinates(x, y_forward){
+            let new_square: Square = self.grid[x as usize][y_forward as usize];
+            if new_square.piece.is_none() {
+                let this_action = Action {
+                    from: this_square,
+                    to: new_square,
                 };
+                available_moves.push(this_action);
             }
-            for i in 0..8 {
-                init_matrix[7][i].piece.Color = Units::Color::White;
-                init_matrix[6][i].piece = Units::Piece {
-                    Rank: Units::Rank::Pawn,
-                    Color: Units::Color::White,
-                };
-            }
-
-            BoardState {
-                matrix: init_matrix,
-            }
-
         }
-        pub fn read(filename: String) -> BoardState {
-            let contents = fs::read_to_string(filename).expect("Panic at reading file"); //TODO: Error handling
-            let contents = contents.replace("\n", " ");
 
-            let mut string_objects: Vec<&str> = contents.trim().split(" ").collect();
-            string_objects.reverse();
-
-            let boardsize = string_objects.len();
-            if boardsize != 64 {
-                panic!("Invalid gamestate file: expected 64 squares, got {}", boardsize)
+        if valid_coordinates(x+1, y_forward) {
+            let new_square: Square = self.grid[(x+1) as usize][y_forward as usize];
+            if not_same_team(self.player, new_square) {
+                let this_action = Action {
+                    from: this_square,
+                    to: new_square,
+                };
+                available_moves.push(this_action);
             }
+        }
 
-            let mut piece_objects =  Vec::<Units::Piece>::new();
-            let mut square_matrix = [[BoardState::init_empty_square(); 8]; 8];
-
-            for object in string_objects{
-                let this_piece = BoardState::blockstate_to_piece(object);
-                piece_objects.push(this_piece);
+        if valid_coordinates(x-1, y_forward) {
+            let new_square: Square = self.grid[(x-1) as usize][y_forward as usize];
+            if not_same_team(self.player, new_square) {
+                let this_action = Action {
+                    from: this_square,
+                    to: new_square,
+                };
+                available_moves.push(this_action);
             }
+        }
 
-            for line in 0..8{
-                for block in 0..8{
-                    let square: Square = Square {
-                        piece: piece_objects[8*line + block],
-                        coordinate: (block, line),
+        if y == 1 || y == 6 {
+            let y_double_forward = y + (offset*2);
+            if valid_coordinates(x, y_double_forward) {
+                let new_square: Square = self.grid[x as usize][y_double_forward as usize];
+                if new_square.piece.is_none() {
+                    let this_action = Action {
+                        from: this_square,
+                        to: new_square,
                     };
-                    square_matrix[block][line] = square;
+                    available_moves.push(this_action);
                 }
             }
-            // Transform contents to 64 objects, split 8x8. Then 1:1 transform to Boardstate
-
-            BoardState {
-                matrix: square_matrix,
-            }
-
         }
+
+        available_moves
+
     }
 
-    impl Square {
-        pub fn is_empty(&self) -> bool {
-            if let Units::Rank::Empty = self.piece.Rank {
-                return true;
-            }
-            false
-        }
+    fn gen_moveset_rook(&self, this_square: Square) -> Vec<Action> {
+        let mut available_moves = Vec::<Action>::new();
+
+        let x = this_square.coordinate.0;
+        let y = this_square.coordinate.1;
+
+
+        available_moves
     }
 
-    impl fmt::Display for Square {  
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            if self.is_empty() {
-                return write!(f, "{}", "_");
-            } else {
-                return write!(f, "{}", self.piece.Rank as i32);
-            }
+    
+
+    fn blockstate_to_piece(object: &str) -> Option<Piece> {
+        if object.eq("XX") {
+            return None;
         }
+
+        let rank = match object.chars().nth(0).unwrap() {
+            'P' => Rank::Pawn,
+            'R' => Rank::Rook,
+            'N' => Rank::Knight,
+            'B' => Rank::Bishop,
+            'Q' => Rank::Queen,
+            'K' => Rank::King,
+            _ => panic!("Piece signature not valid!"),
+        };
+
+        let team = match object.chars().nth(1).unwrap() {
+            'B' => Team::Black,
+            'W' => Team::White,
+            _ => panic!("Color signature not valid!"),
+        };
+
+        let piece = Piece {
+            rank: rank,
+            team: team,
+        };
+
+        return Some(piece);
     }
 
-    impl fmt::Display for BoardState {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut formatted_string = String::new();
-            for i in (0..8).rev() {
-                for j in 0..8 {
-                    let entry = self.matrix[j][i];
-                    //println!("{}, {}: {}", i, j, entry);
-                    formatted_string.push_str(&String::from(format!("{} ", entry)));
-                }
-                formatted_string.push_str(&String::from(format!("\n")));
-            }
-            let output: String = formatted_string.chars().rev().collect();
-            write!(f, "{}", output)
+    pub fn new() -> Game {
+        let blockstates: Vec<&str> = "RB NB BB KB QB BB NB RB
+        PB PB PB PB PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        PW PW PW PW PW PW PW PW
+        RW NW BW KW QW BW NW RW"
+            .trim()
+            .split_whitespace()
+            .rev()
+            .collect();
+
+        let placeholder_square = Square {
+            // Fix array initalization to not require this workaround!
+            piece: None,
+            coordinate: (-1, -1),
+        };
+
+        let mut empty_grid: [[Square; 8]; 8] = [[placeholder_square; 8]; 8];
+
+        let mut piece_objects = Vec::<Option<Piece>>::new();
+
+        for object in blockstates {
+            let this_piece = Game::blockstate_to_piece(object);
+            piece_objects.push(this_piece);
         }
+        for row in 0..8 {
+            for column in 0..8 {
+                let this_square: Square = Square {
+                    piece: piece_objects[8 * row + column],
+                    coordinate: (column.try_into().unwrap(), row.try_into().unwrap()),
+                };
+                empty_grid[column][row] = this_square;
+            }
+        }
+        Game {
+            grid: empty_grid,
+            player: Team::White,
+            history: Vec::<Action>::new(),
+        }
+    }
+}
+
+impl fmt::Display for Square {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let piece = self.piece;
+
+        let type_of_piece = match piece {
+            None => return write!(f, "{}", "_"),
+            Some(type_of_piece) => type_of_piece,
+        };
+
+        let print: &str;
+
+        if let Team::White = type_of_piece.team {
+            print = match type_of_piece.rank {
+                Rank::Pawn => "♙",
+                Rank::Knight => "♘",
+                Rank::Bishop => "♗",
+                Rank::Rook => "♖",
+                Rank::Queen => "♕",
+                Rank::King => "♔",
+            };
+        } else {
+            print = match type_of_piece.rank {
+                Rank::Pawn => "♟︎",
+                Rank::Knight => "♞",
+                Rank::Bishop => "♝",
+                Rank::Rook => "♜",
+                Rank::Queen => "♛",
+                Rank::King => "♚",
+            };
+        }
+        return write!(f, "{}", print);
+    }
+}
+
+impl fmt::Display for Game {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut formatted_string = String::new();
+        for row in (0..8).rev() {
+            for column in 0..8 {
+                let entry = self.grid[column][row];
+                formatted_string.push_str(&String::from(format!("{} ", entry)));
+            }
+            formatted_string.push_str(&String::from(format!("\n")));
+        }
+        let output: String = formatted_string.chars().rev().collect();
+        write!(f, "{}", output)
     }
 }

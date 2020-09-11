@@ -1,9 +1,8 @@
-use rustchessian::Board;
+use rustchessian;
 
 fn main() {
-    let start = Board::BoardState::new();
-    println!("{}", start);
-    let game = Board::BoardState::read(String::from("game"));
+    let game = rustchessian::Game::new();
     println!("{}", game);
-    game.move_from_string(String::from("0,1"));
+    let moves = game.move_from_string("a2");
+    println!("{:?}", moves);
 }
