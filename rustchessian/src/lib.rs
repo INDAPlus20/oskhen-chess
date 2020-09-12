@@ -21,7 +21,7 @@ enum Team {
     White,
     Black,
 }
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Action {
     from: Square,
     to: Square,
@@ -63,11 +63,55 @@ fn not_same_team(team: Team, square: Square) -> bool {
     false
 }
 
+fn string_from_coordinates(coordinates: (isize, isize)) -> String {
+    let mut position = String::new();
+    let column = match coordinates.0 {
+        0 => 'a',
+        1 => 'b',
+        2 => 'c',
+        3 => 'd',
+        4 => 'e',
+        5 => 'f',
+        6 => 'g',
+        7 => 'h',
+        _ => panic!("Invalid coordinate!"),
+    };
+    position.push(column);
+    let row = (coordinates.1 + 1).to_string();
+    position.push_str(&row);
+    position
+}
+
 impl Game {
 
-    pub fn move_from_string(&self, coordinate: &str) -> Vec<Action> {
+    // Set target to origin, origin to empty. Handle captures, add to history.
+    pub fn make_move(&mut self, action: Action) {
+        let target = action.to;
+        let origin = action.from;
+        let target_x = target.coordinate.0 as usize;
+
+        println!("{:?} ; {:?}", target, origin);
+        println!("{:?} ; {:?}", target.coordinate.0 as usize, target.coordinate.1 as usize) ;
+
+        self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
+            piece: origin.piece,
+            coordinate: target.coordinate
+        };
+        println!("{}", self);
+        self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
+            piece: None,
+            coordinate: origin.coordinate
+        };
+        //self.history.append(action);
+
+    }
+
+    pub fn gen_move_from_string(&self, coordinate: &str) -> Vec<Action> {
         let square = self.square_from_string(coordinate);
         let moveset = self.generate_moves(square);
+        for (index, movement) in moveset.iter().enumerate() {
+            println!("{}. {}", index+1, movement);
+        }
         return moveset;
     }
 
@@ -93,6 +137,8 @@ impl Game {
         };
         this_square
     }
+
+    
 
     fn generate_moves(&self, square: Square) -> Vec<Action> {
         let piece = match square.piece {
@@ -163,7 +209,7 @@ impl Game {
             }
         }
 
-        if y == 1 || y == 6 {
+        if y == 1 && self.player == Team::White || y == 6 && self.player == Team::Black {
             let y_double_forward = y + (offset*2);
             if valid_coordinates(x, y_double_forward) {
                 let new_square: Square = self.grid[x as usize][y_double_forward as usize];
@@ -315,3 +361,11 @@ impl fmt::Display for Game {
         write!(f, "{}", output)
     }
 }
+
+impl fmt::Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let coordinate = string_from_coordinates(self.to.coordinate);
+        write!(f, "{}", coordinate) 
+    }
+}
+
