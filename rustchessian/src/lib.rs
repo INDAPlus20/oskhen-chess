@@ -4,7 +4,7 @@ use std::{convert::TryInto, fmt};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    //use super::*;
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
@@ -84,25 +84,31 @@ fn string_from_coordinates(coordinates: (isize, isize)) -> String {
 
 impl Game {
 
-    // Set target to origin, origin to empty. Handle captures, add to history.
+    fn toggle_team(&mut self) {
+        if self.player == Team::White {
+            self.player = Team::Black;
+        }
+        else {
+            self.player = Team::White;
+        }
+    }
+
+    // Set target to origin, origin to empty. Handle captures, add to history. Change player turn.
     pub fn make_move(&mut self, action: Action) {
         let target = action.to;
         let origin = action.from;
-        let target_x = target.coordinate.0 as usize;
-
-        println!("{:?} ; {:?}", target, origin);
-        println!("{:?} ; {:?}", target.coordinate.0 as usize, target.coordinate.1 as usize) ;
 
         self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
             piece: origin.piece,
             coordinate: target.coordinate
         };
-        println!("{}", self);
+
         self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
             piece: None,
             coordinate: origin.coordinate
         };
-        //self.history.append(action);
+        self.toggle_team();
+        self.history.push(action);
 
     }
 
@@ -150,21 +156,74 @@ impl Game {
             panic!("Cannot move enemy piece!")
         }
 
-        let coordinates = square.coordinate;
         let moveset: Vec<Action> = match piece.rank {
             Rank::Pawn => self.gen_moveset_pawn(square),
             Rank::Rook => self.gen_moveset_rook(square),
-            //Rank::Knight => move_knight(coordinates, self),
-            //Rank::Bishop => move_bishop(coordinates, self),
-            //Rank::Queen => move_queen(coordinates, self),
-            //Rank::King => move_king(coordinates, self),
+            //Rank::Knight => self.gen_moveset_knight(square),
+            Rank::Bishop => self.gen_moveset_bishop(square),
+            Rank::Queen => self.gen_moveset_queen(square),
+            //Rank::King => move_king(square),
             _ => panic!("test"),
         };
         moveset
     }
 
-    // Add helper function - add if available!
+    fn gen_scaled_moveset_from_offset(&self, this_square: Square, offsets: [(isize, isize); 4]) -> Vec<Action> {
+        let mut available_moves = Vec::<Action>::new();
+        let x = this_square.coordinate.0;
+        let y = this_square.coordinate.1; 
+        for offset in offsets.iter() {
+            let dx = offset.0;
+            let dy = offset.1;
+            let mut scalar = 1;
+            loop {
+                let new_x = x + dx*scalar;
+                let new_y = y + dy*scalar;
 
+                if valid_coordinates(new_x, new_y) {
+                    let new_square: Square = self.grid[new_x as usize][new_y as usize];
+                    if new_square.piece.is_none() {
+                        let this_action = Action {
+                            from: this_square,
+                            to: new_square
+                        };
+                        available_moves.push(this_action);
+                    }
+                    else if not_same_team(self.player, new_square) {
+                        let this_action = Action {
+                            from: this_square,
+                            to: new_square
+                        };
+                        available_moves.push(this_action);
+                        break;
+                    }
+                    else {
+                        break;
+                    }
+                }
+                else {
+                    break;
+                }
+                scalar += 1;
+            }
+        }
+
+        available_moves
+    }
+
+    fn gen_moveset_diagonal(&self, this_square: Square) -> Vec<Action> {
+
+        let offsets = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
+        self.gen_scaled_moveset_from_offset(this_square, offsets)
+        
+    }
+
+    fn gen_moveset_straight(&self, this_square: Square) -> Vec<Action> {
+
+        let offsets = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+        self.gen_scaled_moveset_from_offset(this_square, offsets)
+
+    }
 
     fn gen_moveset_pawn(&self, this_square: Square) -> Vec<Action> {
         let mut available_moves = Vec::<Action>::new();
@@ -228,16 +287,32 @@ impl Game {
     }
 
     fn gen_moveset_rook(&self, this_square: Square) -> Vec<Action> {
-        let mut available_moves = Vec::<Action>::new();
+        self.gen_moveset_straight(this_square)
+    }
 
+    fn gen_moveset_knight(&self, this_square: Square) -> Vec<Action> {
+        let mut available_moves = Vec::<Action>::new();
         let x = this_square.coordinate.0;
         let y = this_square.coordinate.1;
 
+        println!("REMEMBER TO IMPLEMENT");
 
         available_moves
     }
 
-    
+    fn gen_moveset_bishop(&self, this_square: Square) -> Vec<Action> {
+        self.gen_moveset_diagonal(this_square)
+    }
+
+    fn gen_moveset_queen(&self, this_square: Square) -> Vec<Action> {
+        let mut available_moves = Vec::<Action>::new();
+        let straight = self.gen_moveset_straight(this_square);
+        let diagonal = self.gen_moveset_diagonal(this_square);
+        available_moves.extend(straight);
+        available_moves.extend(diagonal);
+        available_moves
+        
+    }
 
     fn blockstate_to_piece(object: &str) -> Option<Piece> {
         if object.eq("XX") {
@@ -349,16 +424,16 @@ impl fmt::Display for Square {
 
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut formatted_string = String::new();
+        let mut formatted_string = String::from("A B C D E F G H\n");
         for row in (0..8).rev() {
             for column in 0..8 {
                 let entry = self.grid[column][row];
                 formatted_string.push_str(&String::from(format!("{} ", entry)));
             }
+            formatted_string.push_str(&String::from((row+1).to_string()));
             formatted_string.push_str(&String::from(format!("\n")));
         }
-        let output: String = formatted_string.chars().rev().collect();
-        write!(f, "{}", output)
+        write!(f, "{}", formatted_string)
     }
 }
 
