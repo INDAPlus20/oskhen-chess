@@ -85,12 +85,10 @@ fn string_from_coordinates(coordinates: (isize, isize)) -> String {
 impl Game {
 
     fn toggle_team(&mut self) {
-        if self.player == Team::White {
-            self.player = Team::Black;
-        }
-        else {
-            self.player = Team::White;
-        }
+        self.player = match self.player {
+            Team::White => Team::Black,
+            Team::Black => Team::White,
+        };
     }
 
     // Set target to origin, origin to empty. Handle captures, add to history. Change player turn.
@@ -144,8 +142,6 @@ impl Game {
         this_square
     }
 
-    
-
     fn generate_moves(&self, square: Square) -> Vec<Action> {
         let piece = match square.piece {
             Some(i) => i,
@@ -159,13 +155,36 @@ impl Game {
         let moveset: Vec<Action> = match piece.rank {
             Rank::Pawn => self.gen_moveset_pawn(square),
             Rank::Rook => self.gen_moveset_rook(square),
-            //Rank::Knight => self.gen_moveset_knight(square),
+            Rank::Knight => self.gen_moveset_knight(square),
             Rank::Bishop => self.gen_moveset_bishop(square),
             Rank::Queen => self.gen_moveset_queen(square),
-            //Rank::King => move_king(square),
-            _ => panic!("test"),
+            Rank::King => self.gen_moveset_king(square),
         };
         moveset
+    }
+
+    fn try_add_move(&self, old_square: Square, new_x: isize, new_y: isize) -> Option<Action> {
+
+        if valid_coordinates(new_x, new_y){ 
+            let new_square = self.grid[new_x as usize][new_y as usize];
+
+            if new_square.piece.is_none() {
+                let this_action = Action {
+                    from: old_square,
+                    to: new_square
+                };
+                return Some(this_action);
+            }
+            else if not_same_team(self.player, new_square) {
+                let this_action = Action {
+                    from: old_square,
+                    to: new_square
+                };
+               return Some(this_action);
+            }
+        }
+        return None
+        
     }
 
     fn gen_scaled_moveset_from_offset(&self, this_square: Square, offsets: [(isize, isize); 4]) -> Vec<Action> {
@@ -295,7 +314,18 @@ impl Game {
         let x = this_square.coordinate.0;
         let y = this_square.coordinate.1;
 
-        println!("REMEMBER TO IMPLEMENT");
+        let offsets = [(1, 2), (2, 1)];
+        let scalars = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
+        for offset in offsets.iter() {
+            for scalar in scalars.iter() {
+                let new_x = x + offset.0*scalar.0;
+                let new_y = y + offset.1*scalar.1;
+                match self.try_add_move(this_square, new_x, new_y) {
+                    None => (),
+                    Some(action) => available_moves.push(action),
+                }
+            }
+        }
 
         available_moves
     }
@@ -312,6 +342,26 @@ impl Game {
         available_moves.extend(diagonal);
         available_moves
         
+    }
+
+    fn gen_moveset_king(&self, this_square: Square) -> Vec<Action> {
+        let mut available_moves = Vec::<Action>::new();
+        let x = this_square.coordinate.0;
+        let y = this_square.coordinate.1;
+
+        let offsets = [(0, 1), (1, 0), (0, -1), (-1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)];
+
+        for offset in offsets.iter(){
+            let new_x = x + offset.0;
+            let new_y = y + offset.1;
+            match self.try_add_move(this_square, new_x, new_y) {
+                None => (),
+                Some(action) => available_moves.push(action),
+            }
+            
+        }
+
+        available_moves
     }
 
     fn blockstate_to_piece(object: &str) -> Option<Piece> {
