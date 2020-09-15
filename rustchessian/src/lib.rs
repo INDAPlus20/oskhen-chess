@@ -1,6 +1,8 @@
 #![allow(dead_code)] // No annoying warnings
 
 use std::{convert::TryInto, fmt};
+use std::io::{self, BufRead};
+
 
 #[cfg(test)]
 mod tests {
@@ -93,6 +95,30 @@ fn string_from_coordinates(coordinates: (isize, isize)) -> String {
     position
 }
 
+fn promotion_prompt() -> Rank {
+
+
+    println!("Choose which piece to promote your pawn to:");
+    println!("1. Queen");
+    println!("2. Rook");
+    println!("3. Bishop");
+    println!("4. Knight");
+    loop {
+        let input_index = io::stdin().lock().lines().next().unwrap().unwrap().parse::<usize>().unwrap();
+        let choice = match input_index {
+            1 => Rank::Queen,
+            2 => Rank::Rook,
+            3 => Rank::Bishop,
+            4 => Rank::Knight,
+            _ => {
+                println!("Please choose a valid option: ");
+                continue
+            }
+        };
+        return choice;
+    }
+}
+
 impl Game {
 
     fn toggle_team(&mut self) {
@@ -136,6 +162,17 @@ impl Game {
                     coordinate: (target.coordinate.0, origin.coordinate.1),
                 };
             }
+            Actiontype::Promotion => {
+                let new_rank = promotion_prompt();
+                let new_piece: Piece = Piece {
+                    team: self.player,
+                    rank: new_rank,
+                };
+                self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
+                    piece: Some(new_piece),
+                    coordinate: origin.coordinate,
+                };
+            },
             _ => panic!("test"),
         };
 
@@ -150,7 +187,10 @@ impl Game {
         let square = self.square_from_string(coordinate);
         let moveset = self.generate_moves(square);
         for (index, movement) in moveset.iter().enumerate() {
-            println!("{}. {}", index+1, movement);
+            match movement.movetype {
+                Actiontype::Promotion => println!("{}. Promote pawn", index+1),
+                _ => println!("{}. {}", index+1, movement),
+            }
         }
         return moveset;
     }
