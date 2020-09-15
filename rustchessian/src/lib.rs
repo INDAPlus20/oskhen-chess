@@ -96,8 +96,6 @@ fn string_from_coordinates(coordinates: (isize, isize)) -> String {
 }
 
 fn promotion_prompt() -> Rank {
-
-
     println!("Choose which piece to promote your pawn to:");
     println!("1. Queen");
     println!("2. Rook");
@@ -170,8 +168,13 @@ impl Game {
                 };
                 self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
                     piece: Some(new_piece),
-                    coordinate: origin.coordinate,
+                    coordinate: target.coordinate,
                 };
+                self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
+                    piece: None,
+                    coordinate: origin.coordinate
+                };
+
             },
             _ => panic!("test"),
         };
@@ -187,10 +190,7 @@ impl Game {
         let square = self.square_from_string(coordinate);
         let moveset = self.generate_moves(square);
         for (index, movement) in moveset.iter().enumerate() {
-            match movement.movetype {
-                Actiontype::Promotion => println!("{}. Promote pawn", index+1),
-                _ => println!("{}. {}", index+1, movement),
-            }
+            println!("{}. {}", index+1, movement);
         }
         return moveset;
     }
@@ -403,19 +403,25 @@ impl Game {
                 }
                 _ => (),
             };
+        }   
+
+        let mut return_moves = Vec::<Action>::new();
+        
+        for action in available_moves.iter(){
+            let this_action = action.to_owned();
+            if action.to.coordinate.1 == 0 || action.to.coordinate.1 == 7 {
+                let this_action = Action {
+                    from: action.from,
+                    to: action.to,
+                    movetype: Actiontype::Promotion,
+                };
+                return_moves.push(this_action);
+            } else {
+                return_moves.push(this_action);
+            }
         }
 
-        if y == 0 || y == 7 {
-            let this_action = Action {
-                from: this_square,
-                to: this_square,
-                movetype: Actiontype::Promotion,
-            };
-            available_moves.push(this_action);
-        }
-
-
-        available_moves
+        return_moves
 
     }
 
