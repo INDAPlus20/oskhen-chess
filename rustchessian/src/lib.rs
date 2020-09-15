@@ -21,11 +21,22 @@ enum Team {
     White,
     Black,
 }
+
+#[derive(Debug, Copy, Clone)]
+enum Actiontype {
+    Regular,
+    Castling,
+    EnPassant,
+    Promotion,
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Action {
     from: Square,
     to: Square,
+    movetype: Actiontype,
 }
+
 #[derive(Debug, Copy, Clone)]
 struct Piece {
     team: Team,
@@ -95,16 +106,41 @@ impl Game {
     pub fn make_move(&mut self, action: Action) {
         let target = action.to;
         let origin = action.from;
+        let movetype = action.movetype;
 
-        self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
-            piece: origin.piece,
-            coordinate: target.coordinate
+        match movetype {
+            Actiontype::Regular => {
+                self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
+                    piece: origin.piece,
+                    coordinate: target.coordinate
+                };
+        
+                self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
+                    piece: None,
+                    coordinate: origin.coordinate
+                };
+            }
+            Actiontype::EnPassant => {
+                self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
+                    piece: origin.piece,
+                    coordinate: target.coordinate
+                };
+        
+                self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
+                    piece: None,
+                    coordinate: origin.coordinate
+                };
+
+                self.grid[target.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
+                    piece: None,
+                    coordinate: (target.coordinate.0, origin.coordinate.1),
+                };
+            }
+            _ => panic!("test"),
         };
 
-        self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
-            piece: None,
-            coordinate: origin.coordinate
-        };
+
+
         self.toggle_team();
         self.history.push(action);
 
@@ -171,14 +207,16 @@ impl Game {
             if new_square.piece.is_none() {
                 let this_action = Action {
                     from: old_square,
-                    to: new_square
+                    to: new_square,
+                    movetype: Actiontype::Regular
                 };
                 return Some(this_action);
             }
             else if not_same_team(self.player, new_square) {
                 let this_action = Action {
                     from: old_square,
-                    to: new_square
+                    to: new_square,
+                    movetype: Actiontype::Regular
                 };
                return Some(this_action);
             }
@@ -204,14 +242,16 @@ impl Game {
                     if new_square.piece.is_none() {
                         let this_action = Action {
                             from: this_square,
-                            to: new_square
+                            to: new_square,
+                            movetype: Actiontype::Regular
                         };
                         available_moves.push(this_action);
                     }
                     else if not_same_team(self.player, new_square) {
                         let this_action = Action {
                             from: this_square,
-                            to: new_square
+                            to: new_square,
+                            movetype: Actiontype::Regular
                         };
                         available_moves.push(this_action);
                         break;
@@ -260,6 +300,7 @@ impl Game {
                 let this_action = Action {
                     from: this_square,
                     to: new_square,
+                    movetype: Actiontype::Regular
                 };
                 available_moves.push(this_action);
             }
@@ -271,6 +312,7 @@ impl Game {
                 let this_action = Action {
                     from: this_square,
                     to: new_square,
+                    movetype: Actiontype::Regular
                 };
                 available_moves.push(this_action);
             }
@@ -282,6 +324,7 @@ impl Game {
                 let this_action = Action {
                     from: this_square,
                     to: new_square,
+                    movetype: Actiontype::Regular
                 };
                 available_moves.push(this_action);
             }
@@ -295,11 +338,42 @@ impl Game {
                     let this_action = Action {
                         from: this_square,
                         to: new_square,
+                        movetype: Actiontype::Regular
                     };
                     available_moves.push(this_action);
                 }
             }
         }
+
+        let last_move = self.history.last();
+        if last_move.is_some() {
+            let last_move = last_move.unwrap();
+            match last_move.from.piece.unwrap().rank {
+                Rank::Pawn => if (last_move.to.coordinate.1 - last_move.from.coordinate.1).abs() == 2 {
+                    if last_move.to.coordinate.1 == this_square.coordinate.1 {
+                        let mut new_square = last_move.to;
+                        new_square.coordinate.1 += offset;
+                        let this_action = Action {
+                            from: this_square,
+                            to: new_square,
+                            movetype: Actiontype::EnPassant,
+                        };
+                        available_moves.push(this_action);
+                    }
+                }
+                _ => (),
+            };
+        }
+
+        if y == 0 || y == 7 {
+            let this_action = Action {
+                from: this_square,
+                to: this_square,
+                movetype: Actiontype::Promotion,
+            };
+            available_moves.push(this_action);
+        }
+
 
         available_moves
 
