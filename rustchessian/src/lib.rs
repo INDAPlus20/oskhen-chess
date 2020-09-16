@@ -175,7 +175,42 @@ impl Game {
                     coordinate: origin.coordinate
                 };
             },
-            _ => panic!("test"),
+            Actiontype::Castling => {
+                self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
+                    piece: None,
+                    coordinate: origin.coordinate
+                };
+                self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
+                    piece: origin.piece,
+                    coordinate: target.coordinate,
+                };
+                if target.coordinate.0 == 6 {
+                    self.grid[(target.coordinate.0 - 1 )as usize][target.coordinate.1 as usize] = Square {
+                        piece: Some(Piece {
+                            team: self.player,
+                            rank: Rank::Rook,
+                        }),
+                        coordinate: ((target.coordinate.0 - 1), (target.coordinate.1))
+                    };
+
+                   self.grid[7][target.coordinate.1 as usize] = Square {
+                       piece: None,
+                       coordinate: (7, target.coordinate.1),
+                   };
+                } else {
+                    self.grid[(target.coordinate.0 + 1 )as usize][target.coordinate.1 as usize] = Square {
+                        piece: Some(Piece {
+                            team: self.player,
+                            rank: Rank::Rook,
+                        }),
+                        coordinate: ((target.coordinate.0 + 1), (target.coordinate.1))
+                    };
+
+                   self.grid[0][target.coordinate.1 as usize] = Square {
+                       piece: None,
+                       coordinate: (0, target.coordinate.1),
+                }
+            }
         };
 
 
