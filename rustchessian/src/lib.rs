@@ -174,7 +174,6 @@ impl Game {
                     piece: None,
                     coordinate: origin.coordinate
                 };
-
             },
             _ => panic!("test"),
         };
@@ -478,7 +477,80 @@ impl Game {
                 None => (),
                 Some(action) => available_moves.push(action),
             }
-            
+        }
+
+        let mut has_king_moved = false;
+        for action in self.history.iter() {
+            match action.from.piece.unwrap().rank {
+                Rank::King => has_king_moved = true,
+                _ => ()
+            };
+        }
+        if !has_king_moved {
+            //Check left rook
+            let mut left_rook_flag = true;
+            let mut new_x = x-1;
+            while x > 0 {
+                if self.grid[new_x as usize][y as usize].piece.is_some() {
+                    left_rook_flag = false;
+                }
+                new_x-=1;
+            }
+            if left_rook_flag{
+                for action in self.history.iter() {
+                    match action.from.piece.unwrap().rank {
+                        Rank::Rook => if action.from.coordinate.0 == 0 {
+                            left_rook_flag = false;
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            if left_rook_flag {
+                let new_square = Square {
+                    piece: this_square.piece,
+                    coordinate: (2, y),
+                };
+                let this_action = Action {
+                    from: this_square,
+                    to: new_square,
+                    movetype: Actiontype::Castling,
+                };
+                available_moves.push(this_action);
+            }
+
+            //Check right rook
+            let mut right_rook_flag = true;
+            let mut new_x = x+1;
+            while x < 7 {
+                if self.grid[new_x as usize][y as usize].piece.is_some() {
+                    right_rook_flag = false;
+                }
+                new_x+=1;
+            }
+            if right_rook_flag{
+                for action in self.history.iter() {
+                    match action.from.piece.unwrap().rank {
+                        Rank::Rook => if action.from.coordinate.0 == 7 {
+                            right_rook_flag = false;
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            if right_rook_flag {
+                let new_square = Square {
+                    piece: this_square.piece,
+                    coordinate: (6, y),
+                };
+                let this_action = Action {
+                    from: this_square,
+                    to: new_square,
+                    movetype: Actiontype::Castling,
+                };
+                available_moves.push(this_action);
+            }
+
         }
 
         available_moves
