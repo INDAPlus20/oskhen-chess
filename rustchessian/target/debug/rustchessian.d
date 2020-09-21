@@ -1,1 +1,1 @@
-/home/oskar/Documents/Courses/DD1337-Programmering/HW1/rustchessian/target/debug/rustchessian: /home/oskar/Documents/Courses/DD1337-Programmering/HW1/rustchessian/src/lib.rs /home/oskar/Documents/Courses/DD1337-Programmering/HW1/rustchessian/src/main.rs
+/home/oskar/Documents/Courses/DD1337-Programmering/Chess/rustchessian/target/debug/rustchessian: /home/oskar/Documents/Courses/DD1337-Programmering/Chess/rustchessian/src/lib.rs /home/oskar/Documents/Courses/DD1337-Programmering/Chess/rustchessian/src/main.rs

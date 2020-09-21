@@ -3,7 +3,6 @@
 use std::{convert::TryInto, fmt};
 use std::io::{self, BufRead};
 
-
 #[cfg(test)]
 mod tests {
     //use super::*;
@@ -209,6 +208,7 @@ impl Game {
                    self.grid[0][target.coordinate.1 as usize] = Square {
                        piece: None,
                        coordinate: (0, target.coordinate.1),
+                    }
                 }
             }
         };
