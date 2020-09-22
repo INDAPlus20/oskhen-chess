@@ -1,18 +1,62 @@
 #![allow(dead_code)] // No annoying warnings
 
-use std::{convert::TryInto, fmt};
 use std::io::{self, BufRead};
+use std::{convert::TryInto, fmt};
 
 #[cfg(test)]
 mod tests {
-    //use super::*;
+    use super::*;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn castling() {
+        let gamestate ="
+        RB XX XX XX KB BB NB RB
+        PB PB PB PB PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX PW PW PW PW
+        RW XX XX XX KW BW NW RW
+        ";
+        let mut game = Game::board_from_blocks(gamestate);
+        game.make_move_from_coordinates("e1", "c1");
+        let expectedgamestr = "
+        RB XX XX XX KB BB NB RB
+        PB PB PB PB PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX PW PW PW PW
+        XX XX KW RW XX BW NW RW
+        ";
+        let expectedgame = Game::board_from_blocks(expectedgamestr);
+        assert_eq!(game, expectedgame)
     }
+    #[test]
+    fn try_coordinate_move() {
+        let mut game = Game::new();
+        game.make_move_from_coordinates("a2", "a4");
+        let expectedgamestr ="
+        RB NB BB QB KB BB NB RB
+        PB PB PB PB PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        PW XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX PW PW PW PW PW PW PW
+        RW NW BW QW KW BW NW RW
+        ";
+        let expectedgame = Game::board_from_blocks(expectedgamestr);
+        assert_eq!(game.grid, expectedgame.grid);  
+    }
+
+    
+
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 struct Square {
     piece: Option<Piece>,
     coordinate: (isize, isize),
@@ -38,12 +82,12 @@ pub struct Action {
     movetype: Actiontype,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 struct Piece {
     team: Team,
     rank: Rank,
 }
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum Rank {
     Pawn,
     Rook,
@@ -59,23 +103,23 @@ pub struct Game {
     history: Vec<Action>,
 }
 
-fn valid_coordinates(x: isize, y:isize) -> bool {
-    if x < 0 || x > 7 || y < 0 || y > 7{
+fn valid_coordinates(x: isize, y: isize) -> bool {
+    if x < 0 || x > 7 || y < 0 || y > 7 {
         return false;
     }
     true
 }
 
 fn not_same_team(team: Team, square: Square) -> bool {
-    if square.piece.is_some(){
-        if square.piece.unwrap().team != team{
+    if square.piece.is_some() {
+        if square.piece.unwrap().team != team {
             return true;
         }
     }
     false
 }
 
-fn string_from_coordinates(coordinates: (isize, isize)) -> String {
+fn string_from_coordinates(coordinates: (isize, isize)) -> Result<String,String> {
     let mut position = String::new();
     let column = match coordinates.0 {
         0 => 'a',
@@ -86,12 +130,12 @@ fn string_from_coordinates(coordinates: (isize, isize)) -> String {
         5 => 'f',
         6 => 'g',
         7 => 'h',
-        _ => panic!("Invalid coordinate!"),
+        _ => return Err("Invalid coordinate!".to_string()),
     };
     position.push(column);
     let row = (coordinates.1 + 1).to_string();
     position.push_str(&row);
-    position
+    Ok(position)
 }
 
 fn promotion_prompt() -> Rank {
@@ -101,7 +145,14 @@ fn promotion_prompt() -> Rank {
     println!("3. Bishop");
     println!("4. Knight");
     loop {
-        let input_index = io::stdin().lock().lines().next().unwrap().unwrap().parse::<usize>().unwrap();
+        let input_index = io::stdin()
+            .lock()
+            .lines()
+            .next()
+            .unwrap()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
         let choice = match input_index {
             1 => Rank::Queen,
             2 => Rank::Rook,
@@ -109,7 +160,7 @@ fn promotion_prompt() -> Rank {
             4 => Rank::Knight,
             _ => {
                 println!("Please choose a valid option: ");
-                continue
+                continue;
             }
         };
         return choice;
@@ -117,12 +168,23 @@ fn promotion_prompt() -> Rank {
 }
 
 impl Game {
-
     fn toggle_team(&mut self) {
         self.player = match self.player {
             Team::White => Team::Black,
             Team::Black => Team::White,
         };
+    }
+
+    fn make_move_from_coordinates(&mut self, from: &str, to: &str) {
+        let moves = self.gen_move_from_string(&from).unwrap();
+        for movement in moves.iter() {
+            let strmove = format!("{}", movement);
+            if strmove == to {
+                self.make_move(*movement);
+            } else {
+                println!("{} : {}", strmove, to);
+            }
+        }
     }
 
     // Set target to origin, origin to empty. Handle captures, add to history. Change player turn.
@@ -135,23 +197,23 @@ impl Game {
             Actiontype::Regular => {
                 self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
                     piece: origin.piece,
-                    coordinate: target.coordinate
+                    coordinate: target.coordinate,
                 };
-        
+
                 self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
                     piece: None,
-                    coordinate: origin.coordinate
+                    coordinate: origin.coordinate,
                 };
             }
             Actiontype::EnPassant => {
                 self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
                     piece: origin.piece,
-                    coordinate: target.coordinate
+                    coordinate: target.coordinate,
                 };
-        
+
                 self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
                     piece: None,
-                    coordinate: origin.coordinate
+                    coordinate: origin.coordinate,
                 };
 
                 self.grid[target.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
@@ -171,67 +233,72 @@ impl Game {
                 };
                 self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
                     piece: None,
-                    coordinate: origin.coordinate
+                    coordinate: origin.coordinate,
                 };
-            },
+            }
             Actiontype::Castling => {
                 self.grid[origin.coordinate.0 as usize][origin.coordinate.1 as usize] = Square {
                     piece: None,
-                    coordinate: origin.coordinate
+                    coordinate: origin.coordinate,
                 };
                 self.grid[target.coordinate.0 as usize][target.coordinate.1 as usize] = Square {
                     piece: origin.piece,
                     coordinate: target.coordinate,
                 };
                 if target.coordinate.0 == 6 {
-                    self.grid[(target.coordinate.0 - 1 )as usize][target.coordinate.1 as usize] = Square {
-                        piece: Some(Piece {
-                            team: self.player,
-                            rank: Rank::Rook,
-                        }),
-                        coordinate: ((target.coordinate.0 - 1), (target.coordinate.1))
-                    };
+                    self.grid[(target.coordinate.0 - 1) as usize][target.coordinate.1 as usize] =
+                        Square {
+                            piece: Some(Piece {
+                                team: self.player,
+                                rank: Rank::Rook,
+                            }),
+                            coordinate: ((target.coordinate.0 - 1), (target.coordinate.1)),
+                        };
 
-                   self.grid[7][target.coordinate.1 as usize] = Square {
-                       piece: None,
-                       coordinate: (7, target.coordinate.1),
-                   };
+                    self.grid[7][target.coordinate.1 as usize] = Square {
+                        piece: None,
+                        coordinate: (7, target.coordinate.1),
+                    };
                 } else {
-                    self.grid[(target.coordinate.0 + 1 )as usize][target.coordinate.1 as usize] = Square {
-                        piece: Some(Piece {
-                            team: self.player,
-                            rank: Rank::Rook,
-                        }),
-                        coordinate: ((target.coordinate.0 + 1), (target.coordinate.1))
-                    };
+                    self.grid[(target.coordinate.0 + 1) as usize][target.coordinate.1 as usize] =
+                        Square {
+                            piece: Some(Piece {
+                                team: self.player,
+                                rank: Rank::Rook,
+                            }),
+                            coordinate: ((target.coordinate.0 + 1), (target.coordinate.1)),
+                        };
 
-                   self.grid[0][target.coordinate.1 as usize] = Square {
-                       piece: None,
-                       coordinate: (0, target.coordinate.1),
+                    self.grid[0][target.coordinate.1 as usize] = Square {
+                        piece: None,
+                        coordinate: (0, target.coordinate.1),
                     }
                 }
             }
         };
 
-
-
         self.toggle_team();
         self.history.push(action);
-
     }
 
-    pub fn gen_move_from_string(&self, coordinate: &str) -> Vec<Action> {
-        let square = self.square_from_string(coordinate);
-        let moveset = self.generate_moves(square);
-        for (index, movement) in moveset.iter().enumerate() {
-            println!("{}. {}", index+1, movement);
+    pub fn gen_move_from_string(&self, coordinate: &str) -> Result<Vec<Action>, String> {
+        let square = self.square_from_string(coordinate)?;
+        
+        let moveset = self.generate_moves(square)?;
+
+        if moveset.is_empty() {
+            return Err("No available moves for given square!".to_string());
         }
-        return moveset;
+        for (index, movement) in moveset.iter().enumerate() {
+            println!("{}. {}", index + 1, movement);
+        }
+
+        Ok(moveset)
     }
 
-    fn square_from_string(&self, coordinate: &str) -> Square {
+    fn square_from_string(&self, coordinate: &str) -> Result<Square, String> {
         if coordinate.len() != 2 {
-            panic!("Invalid coordinate")
+            return Err("Invalid coordinate".to_string())
         }
         let column: usize = match coordinate.chars().nth(0).unwrap().to_ascii_lowercase() {
             'a' => 0,
@@ -242,24 +309,29 @@ impl Game {
             'f' => 5,
             'g' => 6,
             'h' => 7,
-            _ => panic!("invalid coordinate")
+            _ => return Err("invalid coordinate".to_string())
         };
-        let row: usize = coordinate.chars().nth(1).unwrap().to_digit(10).expect("Invalid coordinate!") as usize;
+        let row: usize = coordinate
+            .chars()
+            .nth(1)
+            .unwrap()
+            .to_digit(10)
+            .expect("Invalid coordinate!") as usize;
         let this_square = Square {
-            piece: self.grid[column][row-1].piece,
-            coordinate: self.grid[column][row-1].coordinate,
+            piece: self.grid[column][row - 1].piece,
+            coordinate: self.grid[column][row - 1].coordinate,
         };
-        this_square
+        Ok(this_square)
     }
 
-    fn generate_moves(&self, square: Square) -> Vec<Action> {
+    fn generate_moves(&self, square: Square) -> Result<Vec<Action>, String> {
         let piece = match square.piece {
             Some(i) => i,
-            None => panic!("Tried to move empty square!"),
+            None => return Err("Tried to move empty square!".to_string()),
         };
 
         if self.player != piece.team {
-            panic!("Cannot move enemy piece!")
+            return Err("Cannot move enemy piece!".to_string())
         }
 
         let moveset: Vec<Action> = match piece.rank {
@@ -270,46 +342,32 @@ impl Game {
             Rank::Queen => self.gen_moveset_queen(square),
             Rank::King => self.gen_moveset_king(square),
         };
-        moveset
+        Ok(moveset)
     }
 
-    fn try_add_move(&self, old_square: Square, new_x: isize, new_y: isize) -> Option<Action> {
-
-        if valid_coordinates(new_x, new_y){ 
-            let new_square = self.grid[new_x as usize][new_y as usize];
-
-            if new_square.piece.is_none() {
-                let this_action = Action {
-                    from: old_square,
-                    to: new_square,
-                    movetype: Actiontype::Regular
-                };
-                return Some(this_action);
-            }
-            else if not_same_team(self.player, new_square) {
-                let this_action = Action {
-                    from: old_square,
-                    to: new_square,
-                    movetype: Actiontype::Regular
-                };
-               return Some(this_action);
-            }
+    fn gen_scaled_moveset_from_offset(
+        &self,
+        this_square: Square,
+        offsets: Vec<(isize, isize)>,
+        limit: bool,
+    ) -> Vec<Action> {
+        let range: usize;
+        if limit {
+            range = 1;
+        } else {
+            range = 8;
         }
-        return None
-        
-    }
 
-    fn gen_scaled_moveset_from_offset(&self, this_square: Square, offsets: [(isize, isize); 4]) -> Vec<Action> {
         let mut available_moves = Vec::<Action>::new();
         let x = this_square.coordinate.0;
-        let y = this_square.coordinate.1; 
+        let y = this_square.coordinate.1;
+
         for offset in offsets.iter() {
             let dx = offset.0;
             let dy = offset.1;
-            let mut scalar = 1;
-            loop {
-                let new_x = x + dx*scalar;
-                let new_y = y + dy*scalar;
+            for scalar in 1..range + 1 {
+                let new_x = x + dx * (scalar as isize);
+                let new_y = y + dy * (scalar as isize);
 
                 if valid_coordinates(new_x, new_y) {
                     let new_square: Square = self.grid[new_x as usize][new_y as usize];
@@ -317,27 +375,23 @@ impl Game {
                         let this_action = Action {
                             from: this_square,
                             to: new_square,
-                            movetype: Actiontype::Regular
+                            movetype: Actiontype::Regular,
                         };
                         available_moves.push(this_action);
-                    }
-                    else if not_same_team(self.player, new_square) {
+                    } else if not_same_team(self.player, new_square) {
                         let this_action = Action {
                             from: this_square,
                             to: new_square,
-                            movetype: Actiontype::Regular
+                            movetype: Actiontype::Regular,
                         };
                         available_moves.push(this_action);
                         break;
-                    }
-                    else {
+                    } else {
                         break;
                     }
-                }
-                else {
+                } else {
                     break;
                 }
-                scalar += 1;
             }
         }
 
@@ -345,17 +399,13 @@ impl Game {
     }
 
     fn gen_moveset_diagonal(&self, this_square: Square) -> Vec<Action> {
-
-        let offsets = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
-        self.gen_scaled_moveset_from_offset(this_square, offsets)
-        
+        let offsets = vec![(-1, -1), (-1, 1), (1, -1), (1, 1)];
+        self.gen_scaled_moveset_from_offset(this_square, offsets, false)
     }
 
     fn gen_moveset_straight(&self, this_square: Square) -> Vec<Action> {
-
-        let offsets = [(0, 1), (0, -1), (1, 0), (-1, 0)];
-        self.gen_scaled_moveset_from_offset(this_square, offsets)
-
+        let offsets = vec![(0, 1), (0, -1), (1, 0), (-1, 0)];
+        self.gen_scaled_moveset_from_offset(this_square, offsets, false)
     }
 
     fn gen_moveset_pawn(&self, this_square: Square) -> Vec<Action> {
@@ -365,54 +415,54 @@ impl Game {
             Team::Black => -1,
         };
         let x = this_square.coordinate.0;
-        let y = this_square.coordinate.1; 
+        let y = this_square.coordinate.1;
         let y_forward = y + offset;
 
-        if valid_coordinates(x, y_forward){
+        if valid_coordinates(x, y_forward) {
             let new_square: Square = self.grid[x as usize][y_forward as usize];
             if new_square.piece.is_none() {
                 let this_action = Action {
                     from: this_square,
                     to: new_square,
-                    movetype: Actiontype::Regular
+                    movetype: Actiontype::Regular,
                 };
                 available_moves.push(this_action);
             }
         }
 
-        if valid_coordinates(x+1, y_forward) {
-            let new_square: Square = self.grid[(x+1) as usize][y_forward as usize];
+        if valid_coordinates(x + 1, y_forward) {
+            let new_square: Square = self.grid[(x + 1) as usize][y_forward as usize];
             if not_same_team(self.player, new_square) {
                 let this_action = Action {
                     from: this_square,
                     to: new_square,
-                    movetype: Actiontype::Regular
+                    movetype: Actiontype::Regular,
                 };
                 available_moves.push(this_action);
             }
         }
 
-        if valid_coordinates(x-1, y_forward) {
-            let new_square: Square = self.grid[(x-1) as usize][y_forward as usize];
+        if valid_coordinates(x - 1, y_forward) {
+            let new_square: Square = self.grid[(x - 1) as usize][y_forward as usize];
             if not_same_team(self.player, new_square) {
                 let this_action = Action {
                     from: this_square,
                     to: new_square,
-                    movetype: Actiontype::Regular
+                    movetype: Actiontype::Regular,
                 };
                 available_moves.push(this_action);
             }
         }
 
         if y == 1 && self.player == Team::White || y == 6 && self.player == Team::Black {
-            let y_double_forward = y + (offset*2);
+            let y_double_forward = y + (offset * 2);
             if valid_coordinates(x, y_double_forward) {
                 let new_square: Square = self.grid[x as usize][y_double_forward as usize];
                 if new_square.piece.is_none() {
                     let this_action = Action {
                         from: this_square,
                         to: new_square,
-                        movetype: Actiontype::Regular
+                        movetype: Actiontype::Regular,
                     };
                     available_moves.push(this_action);
                 }
@@ -423,25 +473,27 @@ impl Game {
         if last_move.is_some() {
             let last_move = last_move.unwrap();
             match last_move.from.piece.unwrap().rank {
-                Rank::Pawn => if (last_move.to.coordinate.1 - last_move.from.coordinate.1).abs() == 2 {
-                    if last_move.to.coordinate.1 == this_square.coordinate.1 {
-                        let mut new_square = last_move.to;
-                        new_square.coordinate.1 += offset;
-                        let this_action = Action {
-                            from: this_square,
-                            to: new_square,
-                            movetype: Actiontype::EnPassant,
-                        };
-                        available_moves.push(this_action);
+                Rank::Pawn => {
+                    if (last_move.to.coordinate.1 - last_move.from.coordinate.1).abs() == 2 {
+                        if last_move.to.coordinate.1 == this_square.coordinate.1 {
+                            let mut new_square = last_move.to;
+                            new_square.coordinate.1 += offset;
+                            let this_action = Action {
+                                from: this_square,
+                                to: new_square,
+                                movetype: Actiontype::EnPassant,
+                            };
+                            available_moves.push(this_action);
+                        }
                     }
                 }
                 _ => (),
             };
-        }   
+        }
 
         let mut return_moves = Vec::<Action>::new();
-        
-        for action in available_moves.iter(){
+
+        for action in available_moves.iter() {
             let this_action = action.to_owned();
             if action.to.coordinate.1 == 0 || action.to.coordinate.1 == 7 {
                 let this_action = Action {
@@ -456,7 +508,6 @@ impl Game {
         }
 
         return_moves
-
     }
 
     fn gen_moveset_rook(&self, this_square: Square) -> Vec<Action> {
@@ -464,24 +515,17 @@ impl Game {
     }
 
     fn gen_moveset_knight(&self, this_square: Square) -> Vec<Action> {
-        let mut available_moves = Vec::<Action>::new();
-        let x = this_square.coordinate.0;
-        let y = this_square.coordinate.1;
-
-        let offsets = [(1, 2), (2, 1)];
-        let scalars = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
-        for offset in offsets.iter() {
-            for scalar in scalars.iter() {
-                let new_x = x + offset.0*scalar.0;
-                let new_y = y + offset.1*scalar.1;
-                match self.try_add_move(this_square, new_x, new_y) {
-                    None => (),
-                    Some(action) => available_moves.push(action),
-                }
-            }
-        }
-
-        available_moves
+        let offsets = vec![
+            (1, 2),
+            (2, 1),
+            (-1, 2),
+            (-1, -2),
+            (1, -2),
+            (-2, 1),
+            (2, -1),
+            (-2, -1),
+        ];
+        self.gen_scaled_moveset_from_offset(this_square, offsets, true)
     }
 
     fn gen_moveset_bishop(&self, this_square: Square) -> Vec<Action> {
@@ -495,7 +539,6 @@ impl Game {
         available_moves.extend(straight);
         available_moves.extend(diagonal);
         available_moves
-        
     }
 
     fn gen_moveset_king(&self, this_square: Square) -> Vec<Action> {
@@ -503,39 +546,44 @@ impl Game {
         let x = this_square.coordinate.0;
         let y = this_square.coordinate.1;
 
-        let offsets = [(0, 1), (1, 0), (0, -1), (-1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)];
+        let offsets = vec![
+            (0, 1),
+            (1, 0),
+            (0, -1),
+            (-1, 0),
+            (-1, -1),
+            (-1, 1),
+            (1, -1),
+            (1, 1),
+        ];
+        available_moves.extend(self.gen_scaled_moveset_from_offset(this_square, offsets, true));
 
-        for offset in offsets.iter(){
-            let new_x = x + offset.0;
-            let new_y = y + offset.1;
-            match self.try_add_move(this_square, new_x, new_y) {
-                None => (),
-                Some(action) => available_moves.push(action),
-            }
-        }
+        //Special move!
 
         let mut has_king_moved = false;
         for action in self.history.iter() {
             match action.from.piece.unwrap().rank {
                 Rank::King => has_king_moved = true,
-                _ => ()
+                _ => (),
             };
         }
         if !has_king_moved {
             //Check left rook
             let mut left_rook_flag = true;
-            let mut new_x = x-1;
-            while x > 0 {
+            let mut new_x = x - 1;
+            while new_x > 0 {
                 if self.grid[new_x as usize][y as usize].piece.is_some() {
                     left_rook_flag = false;
                 }
-                new_x-=1;
+                new_x -= 1;
             }
-            if left_rook_flag{
+            if left_rook_flag {
                 for action in self.history.iter() {
                     match action.from.piece.unwrap().rank {
-                        Rank::Rook => if action.from.coordinate.0 == 0 {
-                            left_rook_flag = false;
+                        Rank::Rook => {
+                            if action.from.coordinate.0 == 0 {
+                                left_rook_flag = false;
+                            }
                         }
                         _ => (),
                     }
@@ -556,18 +604,20 @@ impl Game {
 
             //Check right rook
             let mut right_rook_flag = true;
-            let mut new_x = x+1;
-            while x < 7 {
+            let mut new_x = x + 1;
+            while new_x < 7 {
                 if self.grid[new_x as usize][y as usize].piece.is_some() {
                     right_rook_flag = false;
                 }
-                new_x+=1;
+                new_x += 1;
             }
-            if right_rook_flag{
+            if right_rook_flag {
                 for action in self.history.iter() {
                     match action.from.piece.unwrap().rank {
-                        Rank::Rook => if action.from.coordinate.0 == 7 {
-                            right_rook_flag = false;
+                        Rank::Rook => {
+                            if action.from.coordinate.0 == 7 {
+                                right_rook_flag = false;
+                            }
                         }
                         _ => (),
                     }
@@ -585,15 +635,14 @@ impl Game {
                 };
                 available_moves.push(this_action);
             }
-
         }
 
         available_moves
     }
 
-    fn blockstate_to_piece(object: &str) -> Option<Piece> {
+    fn blockstate_to_piece(object: &str) -> Result<Option<Piece>, String> {
         if object.eq("XX") {
-            return None;
+            return Ok(None);
         }
 
         let rank = match object.chars().nth(0).unwrap() {
@@ -603,13 +652,13 @@ impl Game {
             'B' => Rank::Bishop,
             'Q' => Rank::Queen,
             'K' => Rank::King,
-            _ => panic!("Piece signature not valid!"),
+            _ => return Err("Piece signature not valid!".to_string()),
         };
 
         let team = match object.chars().nth(1).unwrap() {
             'B' => Team::Black,
             'W' => Team::White,
-            _ => panic!("Color signature not valid!"),
+            _ => return Err("Color signature not valid!".to_string()),
         };
 
         let piece = Piece {
@@ -617,21 +666,13 @@ impl Game {
             team: team,
         };
 
-        return Some(piece);
+        return Ok(Some(piece));
     }
 
-    pub fn new() -> Game {
-        let blockstates: Vec<&str> = "RB NB BB KB QB BB NB RB
-        PB PB PB PB PB PB PB PB
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        PW PW PW PW PW PW PW PW
-        RW NW BW KW QW BW NW RW"
+    pub fn board_from_blocks(gamestate: &str) -> Game {
+        let blockstates: Vec<&str> = gamestate
             .trim()
             .split_whitespace()
-            .rev()
             .collect();
 
         let placeholder_square = Square {
@@ -640,28 +681,44 @@ impl Game {
             coordinate: (-1, -1),
         };
 
-        let mut empty_grid: [[Square; 8]; 8] = [[placeholder_square; 8]; 8];
+        let mut this_grid: [[Square; 8]; 8] = [[placeholder_square; 8]; 8];
 
         let mut piece_objects = Vec::<Option<Piece>>::new();
 
         for object in blockstates {
-            let this_piece = Game::blockstate_to_piece(object);
+            let this_piece = Game::blockstate_to_piece(object).unwrap();
             piece_objects.push(this_piece);
         }
+
         for row in 0..8 {
             for column in 0..8 {
                 let this_square: Square = Square {
-                    piece: piece_objects[8 * row + column],
+                    piece: piece_objects[8 * (7-row) + column],
                     coordinate: (column.try_into().unwrap(), row.try_into().unwrap()),
                 };
-                empty_grid[column][row] = this_square;
+                this_grid[column][row] = this_square;
             }
         }
         Game {
-            grid: empty_grid,
+            grid: this_grid,
             player: Team::White,
             history: Vec::<Action>::new(),
         }
+
+    }
+
+    pub fn new() -> Game {
+        let gamestate  ="
+        RB NB BB QB KB BB NB RB
+        PB PB PB PB PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        PW PW PW PW PW PW PW PW
+        RW NW BW QW KW BW NW RW
+        ";
+        Game::board_from_blocks(gamestate)
     }
 }
 
@@ -707,7 +764,21 @@ impl fmt::Display for Game {
                 let entry = self.grid[column][row];
                 formatted_string.push_str(&String::from(format!("{} ", entry)));
             }
-            formatted_string.push_str(&String::from((row+1).to_string()));
+            formatted_string.push_str(&String::from((row + 1).to_string()));
+            formatted_string.push_str(&String::from(format!("\n")));
+        }
+        write!(f, "{}", formatted_string)
+    }
+}
+
+impl fmt::Debug for Game {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut formatted_string = String::new();
+        for row in (0..8).rev() {
+            for column in 0..8 {
+                let entry = self.grid[column][row];
+                formatted_string.push_str(&String::from(format!("{} ", entry)));
+            }
             formatted_string.push_str(&String::from(format!("\n")));
         }
         write!(f, "{}", formatted_string)
@@ -716,8 +787,15 @@ impl fmt::Display for Game {
 
 impl fmt::Display for Action {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let coordinate = string_from_coordinates(self.to.coordinate);
-        write!(f, "{}", coordinate) 
+        let coordinate = string_from_coordinates(self.to.coordinate).unwrap();
+        write!(f, "{}", coordinate)
     }
 }
 
+impl PartialEq for Game {
+    fn eq(&self, other: &Self) -> bool {
+        let first = format!("{}", self);
+        let second = format!("{}", other);
+        first == second
+    }
+}
