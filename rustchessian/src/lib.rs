@@ -49,10 +49,53 @@ mod tests {
         RW NW BW QW KW BW NW RW
         ";
         let expectedgame = Game::board_from_blocks(expectedgamestr);
-        assert_eq!(game.grid, expectedgame.grid);  
+        assert_eq!(game, expectedgame);  
+    }
+    #[test]
+    fn enpassant() {
+
+        let gamestate ="
+        RB NB BB QB KB BB NB RB
+        PB XX PB PB PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX PB XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        PW PW PW PW PW PW PW PW
+        RW NW BW QW KW BW NW RW
+        ";
+        let mut game = Game::board_from_blocks(gamestate);
+        game.make_move_from_coordinates("a2", "a4");
+        game.make_move_from_coordinates("b4", "a3");
+
+        let expectedgamestr = "
+        RB NB BB QB KB BB NB RB
+        PB XX PB PB PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        PB XX XX XX XX XX XX XX
+        XX PW PW PW PW PW PW PW
+        RW NW BW QW KW BW NW RW
+        ";
+        let expectedgame = Game::board_from_blocks(expectedgamestr);
+        assert_eq!(game, expectedgame)
+        
     }
 
-    
+    // TODO: Implement this test properly
+    fn promotion() {
+
+    }
+
+    #[test]
+    fn king_at_start() {
+
+        let mut game = Game::new();
+        let coordinates = game.where_is_king();
+        assert_eq!(coordinates, (4, 0))
+
+    }
 
 }
 
@@ -541,6 +584,7 @@ impl Game {
         available_moves
     }
 
+    //TODO: CLEAN UP THIS METHOD!
     fn gen_moveset_king(&self, this_square: Square) -> Vec<Action> {
         let mut available_moves = Vec::<Action>::new();
         let x = this_square.coordinate.0;
@@ -640,6 +684,26 @@ impl Game {
         available_moves
     }
 
+    fn where_is_king(&self) -> (isize, isize) {
+        for row in self.grid.iter() {
+            for column in row.iter() {
+                if column.piece.is_some() {
+                    let piece = column.piece.unwrap();
+                    if piece.rank == Rank::King {
+                        if piece.team == self.player {
+                            return column.coordinate
+                        }
+                    }
+                }
+            }
+        }
+        return (-1, -1)
+    }
+
+    fn is_chess(&self) -> bool {
+        true
+    }
+    
     fn blockstate_to_piece(object: &str) -> Result<Option<Piece>, String> {
         if object.eq("XX") {
             return Ok(None);
@@ -720,6 +784,9 @@ impl Game {
         ";
         Game::board_from_blocks(gamestate)
     }
+
+
+
 }
 
 impl fmt::Display for Square {
