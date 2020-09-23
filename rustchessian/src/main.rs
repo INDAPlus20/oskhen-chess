@@ -3,19 +3,7 @@ use std::io::{self, BufRead};
 
 fn main() {
 
-    let gamestate  ="
-    RB NB BB XX KB BB NB RB
-    PB PB PB XX PB PB PB PB
-    XX XX XX XX XX XX XX XX
-    QB XX XX XX XX XX XX XX
-    XX XX XX XX XX XX XX XX
-    XX XX XX XX XX XX XX XX
-    PW PW PW XX PW PW PW PW
-    RW NW BW QW KW BW NW RW
-    ";
-    let mut game = rustchessian::Game::board_from_blocks(gamestate);
-
-    //let mut game = rustchessian::Game::new();
+    let mut game = rustchessian::Game::new();
 
     loop {
         if game.get_gamestate() != rustchessian::Gamestate::InProgress {

@@ -425,10 +425,12 @@ impl Game {
 
         for row in self.grid.iter() {
             for column in row.iter() {
-                let moves = self.generate_legal_moves(*column)?;
-                possible_moves.extend(moves);
+                let moves = self.generate_legal_moves(*column);
+                match moves {
+                    Ok(i) => possible_moves.extend(i),
+                    Err(_) => ()
 
-
+                }
             }
 
         }
