@@ -91,12 +91,42 @@ mod tests {
     #[test]
     fn king_at_start() {
 
-        let mut game = Game::new();
-        let coordinates = game.where_is_king();
+        let game = Game::new();
+        let coordinates = game.where_is_king(Team::White);
         assert_eq!(coordinates, (4, 0))
 
     }
 
+    #[test]
+    fn is_checked_true() {
+        let gamestate  ="
+        RB NB BB XX KB BB NB RB
+        PB PB PB XX PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        QB XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        PW PW PW XX PW PW PW PW
+        RW NW BW QW KW BW NW RW
+        ";
+        let game = Game::board_from_blocks(gamestate);
+        assert!(game.is_checked(Team::White))
+    }
+    #[test]
+    fn is_checked_false() {
+        let gamestate  ="
+        RB NB BB XX KB BB NB RB
+        PB PB PB XX PB PB PB PB
+        XX XX XX XX XX XX XX XX
+        QB XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        PW PW PW XX PW PW PW PW
+        RW NW BW QW KW BW NW RW
+        ";
+        let game = Game::board_from_blocks(gamestate);
+        assert!(!game.is_checked(Team::Black))
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -139,7 +169,7 @@ enum Rank {
     Queen,
     King,
 }
-
+#[derive(Clone)]
 pub struct Game {
     grid: [[Square; 8]; 8],
     player: Team,
@@ -212,10 +242,7 @@ fn promotion_prompt() -> Rank {
 
 impl Game {
     fn toggle_team(&mut self) {
-        self.player = match self.player {
-            Team::White => Team::Black,
-            Team::Black => Team::White,
-        };
+        self.player = self.player.opposite();
     }
 
     fn make_move_from_coordinates(&mut self, from: &str, to: &str) {
@@ -327,7 +354,7 @@ impl Game {
     pub fn gen_move_from_string(&self, coordinate: &str) -> Result<Vec<Action>, String> {
         let square = self.square_from_string(coordinate)?;
         
-        let moveset = self.generate_moves(square)?;
+        let moveset = self.generate_legal_moves(square)?;
 
         if moveset.is_empty() {
             return Err("No available moves for given square!".to_string());
@@ -338,6 +365,7 @@ impl Game {
 
         Ok(moveset)
     }
+
 
     fn square_from_string(&self, coordinate: &str) -> Result<Square, String> {
         if coordinate.len() != 2 {
@@ -367,7 +395,45 @@ impl Game {
         Ok(this_square)
     }
 
-    fn generate_moves(&self, square: Square) -> Result<Vec<Action>, String> {
+    fn generate_all_moves(&self) -> Result<Vec<Action>, String> {
+
+        let mut possible_moves = Vec::<Action>::new();
+
+        for row in self.grid.iter() {
+            for column in row.iter() {
+                let square = *column;
+                
+
+            }
+
+        }
+
+        Err("a".to_string())
+
+    }
+
+    //TODO: Remove comments
+    fn generate_legal_moves(&self, square: Square) -> Result<Vec<Action>, String> {
+
+        let psuedo_moves = self.generate_psuedo_moves(square)?;
+        let mut legal_moves = Vec::<Action>::new();
+
+        for pmove in psuedo_moves.iter() {
+            let mut clone: Game = self.clone();
+            clone.make_move(*pmove);
+            if !clone.is_checked(clone.player.opposite()) {
+                //println!("legal for team: {:?}\n{}", clone.player.opposite(), clone);
+                legal_moves.push(*pmove);
+            }
+            /*else {
+                println!("Illegal move: {}", pmove);
+            }*/
+
+        }
+        Ok(legal_moves)
+    }
+
+    fn generate_psuedo_moves(&self, square: Square) -> Result<Vec<Action>, String> {
         let piece = match square.piece {
             Some(i) => i,
             None => return Err("Tried to move empty square!".to_string()),
@@ -385,6 +451,7 @@ impl Game {
             Rank::Queen => self.gen_moveset_queen(square),
             Rank::King => self.gen_moveset_king(square),
         };
+
         Ok(moveset)
     }
 
@@ -451,6 +518,8 @@ impl Game {
         self.gen_scaled_moveset_from_offset(this_square, offsets, false)
     }
 
+    
+    //TODO: Clean up!
     fn gen_moveset_pawn(&self, this_square: Square) -> Vec<Action> {
         let mut available_moves = Vec::<Action>::new();
         let offset: isize = match self.player {
@@ -684,26 +753,69 @@ impl Game {
         available_moves
     }
 
-    fn where_is_king(&self) -> (isize, isize) {
+    fn where_is_king(&self, team: Team) -> (isize, isize) {
         for row in self.grid.iter() {
             for column in row.iter() {
                 if column.piece.is_some() {
                     let piece = column.piece.unwrap();
                     if piece.rank == Rank::King {
-                        if piece.team == self.player {
+                        //println!("X: {:?}, {:?}", column, self.player);
+                        if piece.team == team {
                             return column.coordinate
                         }
                     }
                 }
             }
         }
-        return (-1, -1)
+        panic!("COULD NOT FIND KING!");
     }
 
-    fn is_chess(&self) -> bool {
-        true
+    //TODO: REMOVE COMMENTS
+    fn is_checked(&self, team: Team) -> bool {
+
+        let mut board = self.clone();
+        board.player = team;
+
+        let king_coordinates = board.where_is_king(team);
+
+        let ranks: [Rank; 6] = [Rank::Pawn, Rank::Rook, Rank::Knight, Rank::Bishop, Rank::Queen, Rank::King];
+
+        for rank in ranks.iter() {
+            let piece = Piece {
+                rank: *rank,
+                team: team,
+            };
+            let this_square = Square {
+                piece: Some(piece),
+                coordinate: king_coordinates,
+            };
+            //println!("piece was {:?}", piece);
+            let piece_moves = board.generate_psuedo_moves(this_square).unwrap();
+            /*if *rank == Rank::Queen {
+                for i in piece_moves.iter() {
+                    println!("move: {}", i);
+                }
+                
+            }*/
+            for action in piece_moves {
+                let this_square = action.to.piece;
+                if this_square.is_some() {
+                    //println!("\tHit: {:?}", this_square);
+                    if this_square.unwrap().rank == *rank {
+                        if this_square.unwrap().team != team {
+                            //println!("checked: {:?}", this_square.unwrap());
+                            return true;
+                        }
+                        //println!("Almost checked by {:?} but team was {:?}", this_square.unwrap(), team);
+                    }
+                }
+
+            }
+        }
+        //println!("false");
+        false
     }
-    
+
     fn blockstate_to_piece(object: &str) -> Result<Option<Piece>, String> {
         if object.eq("XX") {
             return Ok(None);
@@ -864,5 +976,14 @@ impl PartialEq for Game {
         let first = format!("{}", self);
         let second = format!("{}", other);
         first == second
+    }
+}
+
+impl Team {
+    fn opposite(&self) -> Team {
+        if *self == Team::White {
+            return Team::Black;
+        }
+        return Team::White;
     }
 }
