@@ -17,9 +17,13 @@ fn main() {
 
     //let mut game = rustchessian::Game::new();
 
-    'outer: loop {
+    loop {
+        if game.get_gamestate() != rustchessian::Gamestate::InProgress {
+            println!("GAME OVER!");
+            break;
+        }
         println!("{}", game);
-        'inner: loop {
+        loop {
             println!("Generate moves from square: ");
             let input = io::stdin().lock().lines().next().unwrap().unwrap();
 

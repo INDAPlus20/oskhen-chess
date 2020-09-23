@@ -175,6 +175,11 @@ pub struct Game {
     player: Team,
     history: Vec<Action>,
 }
+#[derive(PartialEq)]
+pub enum Gamestate {
+    InProgress,
+    Checkmate,
+}
 
 fn valid_coordinates(x: isize, y: isize) -> bool {
     if x < 0 || x > 7 || y < 0 || y > 7 {
@@ -241,6 +246,14 @@ fn promotion_prompt() -> Rank {
 }
 
 impl Game {
+
+    pub fn get_gamestate(&self) -> Gamestate{
+        if self.is_checkmate() {
+            return Gamestate::Checkmate;
+        }
+        return Gamestate::InProgress
+    }
+
     fn toggle_team(&mut self) {
         self.player = self.player.opposite();
     }
@@ -347,8 +360,9 @@ impl Game {
             }
         };
 
-        self.toggle_team();
         self.history.push(action);
+
+        self.toggle_team();
     }
 
     pub fn gen_move_from_string(&self, coordinate: &str) -> Result<Vec<Action>, String> {
@@ -395,20 +409,26 @@ impl Game {
         Ok(this_square)
     }
 
+    fn is_checkmate(&self) -> bool {
+        let moves = self.generate_all_moves().unwrap();
+        return moves.is_empty()
+    }
+
     fn generate_all_moves(&self) -> Result<Vec<Action>, String> {
 
         let mut possible_moves = Vec::<Action>::new();
 
         for row in self.grid.iter() {
             for column in row.iter() {
-                let square = *column;
-                
+                let moves = self.generate_legal_moves(*column)?;
+                possible_moves.extend(moves);
+
 
             }
 
         }
 
-        Err("a".to_string())
+        Ok(possible_moves)
 
     }
 
@@ -422,12 +442,8 @@ impl Game {
             let mut clone: Game = self.clone();
             clone.make_move(*pmove);
             if !clone.is_checked(clone.player.opposite()) {
-                //println!("legal for team: {:?}\n{}", clone.player.opposite(), clone);
                 legal_moves.push(*pmove);
             }
-            /*else {
-                println!("Illegal move: {}", pmove);
-            }*/
 
         }
         Ok(legal_moves)
@@ -789,30 +805,21 @@ impl Game {
                 piece: Some(piece),
                 coordinate: king_coordinates,
             };
-            //println!("piece was {:?}", piece);
+
             let piece_moves = board.generate_psuedo_moves(this_square).unwrap();
-            /*if *rank == Rank::Queen {
-                for i in piece_moves.iter() {
-                    println!("move: {}", i);
-                }
-                
-            }*/
+
             for action in piece_moves {
                 let this_square = action.to.piece;
                 if this_square.is_some() {
-                    //println!("\tHit: {:?}", this_square);
                     if this_square.unwrap().rank == *rank {
                         if this_square.unwrap().team != team {
-                            //println!("checked: {:?}", this_square.unwrap());
                             return true;
                         }
-                        //println!("Almost checked by {:?} but team was {:?}", this_square.unwrap(), team);
                     }
                 }
 
             }
         }
-        //println!("false");
         false
     }
 
