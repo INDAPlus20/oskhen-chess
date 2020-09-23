@@ -1,0 +1,1 @@
+/home/oskar/Documents/Courses/DD1337-Programmering/oskhen-chess/rustchessian/target/release/rustchessian: /home/oskar/Documents/Courses/DD1337-Programmering/oskhen-chess/rustchessian/src/lib.rs /home/oskar/Documents/Courses/DD1337-Programmering/oskhen-chess/rustchessian/src/main.rs
