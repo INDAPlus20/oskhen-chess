@@ -2,11 +2,16 @@
 
 /*TODO: Memoization for move generation!
 
-In the start of every round, check for checkmate by geneerating all possible moves. At the same time, Save every vector of actions for each square in a lookup table.
+In the start of every round, check for checkmate by geneerating all possible moves.
+At the same time, Save every vector of actions for each square in a lookup table.
 
 */
+
+
 use std::io::{self, BufRead};
 use std::{convert::TryInto, fmt};
+use std::collections::HashMap;
+
 
 #[cfg(test)]
 mod tests {
@@ -25,6 +30,7 @@ mod tests {
         RW XX XX XX KW BW NW RW
         ";
         let mut game = Game::board_from_blocks(gamestate);
+        game.start_round();
         game.make_move_from_coordinates("e1", "c1");
         let expectedgamestr = "
         RB XX XX XX KB BB NB RB
@@ -42,6 +48,7 @@ mod tests {
     #[test]
     fn try_coordinate_move() {
         let mut game = Game::new();
+        game.start_round();
         game.make_move_from_coordinates("a2", "a4");
         let expectedgamestr ="
         RB NB BB QB KB BB NB RB
@@ -70,7 +77,9 @@ mod tests {
         RW NW BW QW KW BW NW RW
         ";
         let mut game = Game::board_from_blocks(gamestate);
+        game.start_round();
         game.make_move_from_coordinates("a2", "a4");
+        game.start_round();
         game.make_move_from_coordinates("b4", "a3");
 
         let expectedgamestr = "
@@ -132,6 +141,41 @@ mod tests {
         let game = Game::board_from_blocks(gamestate);
         assert!(!game.is_checked(Team::Black))
     }
+
+    #[test]
+    fn is_checkmate() {
+        let gamestate  ="
+        RB NB BB XX KB BB NB RB
+        PB PB PB PB XX PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX QB
+        XX XX XX XX XX XX XX XX
+        PW PW PW PW PW XX XX PW
+        RW NW BW QW KW BW NW RW
+        ";
+        let mut game = Game::board_from_blocks(gamestate);
+        let status = game.start_round();
+        assert!(status == Gamestate::Checkmate)
+    }
+    #[test]
+    fn is_not_checkmate() {
+        let gamestate  ="
+        RB NB BB XX KB BB NB RB
+        PB PB PB PB XX PB PB PB
+        XX XX XX XX XX XX XX XX
+        XX XX XX XX XX XX XX XX
+        RW XX XX XX XX XX XX QB
+        XX XX XX XX XX XX XX XX
+        XX PW PW PW PW XX XX PW
+        XX NW BW QW KW BW NW RW
+        ";
+        let mut game = Game::board_from_blocks(gamestate);
+        let status = game.start_round();
+        assert!(status != Gamestate::Checkmate)
+
+    }
+
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -179,6 +223,7 @@ pub struct Game {
     grid: [[Square; 8]; 8],
     player: Team,
     history: Vec<Action>,
+    moveset: HashMap<(usize, usize), Vec<Action>>
 }
 #[derive(PartialEq)]
 pub enum Gamestate {
@@ -252,7 +297,44 @@ fn promotion_prompt() -> Rank {
 
 impl Game {
 
-    pub fn get_gamestate(&self) -> Gamestate{
+    fn memoize_all_moves(&mut self) {
+
+            let mut movemap: HashMap<(usize, usize), Vec<Action>> = HashMap::new();
+            
+
+            for row in self.grid.iter() {
+                for column in row.iter() {
+                    let coordinates: (usize, usize) = (
+                        column.coordinate.0.try_into().unwrap(),
+                        column.coordinate.1.try_into().unwrap(),
+                    );
+                    let moves = self.generate_legal_moves(*column);
+                    match moves {
+                        Ok(i) => {
+                            movemap.insert(
+                                coordinates,
+                                i,
+                            );
+                        },
+                        Err(_) => ()
+    
+                    }
+                }
+    
+            }
+
+            self.moveset = movemap;
+    
+        }
+
+    pub fn start_round(&mut self) -> Gamestate {
+
+        self.memoize_all_moves();
+
+        self.get_gamestate()
+    }
+
+    fn get_gamestate(&self) -> Gamestate{
         if self.is_checkmate() {
             return Gamestate::Checkmate;
         }
@@ -370,14 +452,24 @@ impl Game {
         self.toggle_team();
     }
 
-    pub fn gen_move_from_string(&self, coordinate: &str) -> Result<Vec<Action>, String> {
-        let square = self.square_from_string(coordinate)?;
-        
-        let moveset = self.generate_legal_moves(square)?;
+    pub fn gen_move_from_string(&self, coordinates: &str) -> Result<Vec<Action>, String> {
+        let coordinates_tuple = self.coordinate_from_string(coordinates)?;
+        let this_square = self.square_from_string(coordinates)?;
+
+        if this_square.piece.is_none() {
+            return Err("Square is empty!".to_string());
+        }
+
+        if this_square.piece.unwrap().team != self.player {
+            return Err("Tried to move enemy piece!".to_string());
+        }
+
+        let moveset = self.moveset[&coordinates_tuple].clone();
 
         if moveset.is_empty() {
             return Err("No available moves for given square!".to_string());
         }
+        
         for (index, movement) in moveset.iter().enumerate() {
             println!("{}. {}", index + 1, movement);
         }
@@ -385,8 +477,7 @@ impl Game {
         Ok(moveset)
     }
 
-
-    fn square_from_string(&self, coordinate: &str) -> Result<Square, String> {
+    fn coordinate_from_string(&self, coordinate: &str) -> Result<(usize, usize), String> {
         if coordinate.len() != 2 {
             return Err("Invalid coordinate".to_string())
         }
@@ -399,7 +490,7 @@ impl Game {
             'f' => 5,
             'g' => 6,
             'h' => 7,
-            _ => return Err("invalid coordinate".to_string())
+            _ => return Err("Invalid coordinate!".to_string())
         };
         let row: usize = coordinate
             .chars()
@@ -407,15 +498,35 @@ impl Game {
             .unwrap()
             .to_digit(10)
             .expect("Invalid coordinate!") as usize;
+        
+        if row > 8 {
+            return Err("Invalid coordinate!".to_string());
+        }
+        
+        let coordinates = (column, row-1);
+
+        Ok(coordinates)
+    }
+
+    fn square_from_string(&self, coordinate: &str) -> Result<Square, String> {
+        
+        let coordinates: (usize, usize) = self.coordinate_from_string(coordinate)?;
+
         let this_square = Square {
-            piece: self.grid[column][row - 1].piece,
-            coordinate: self.grid[column][row - 1].coordinate,
+            piece: self.grid[coordinates.0][coordinates.1].piece,
+            coordinate: ((coordinates.0 as isize), (coordinates.1 as isize))
         };
         Ok(this_square)
     }
 
     fn is_checkmate(&self) -> bool {
-        let moves = self.generate_all_moves().unwrap();
+
+        let mut moves: Vec<Action> = Vec::new();
+
+        for value in self.moveset.values() {
+            moves.extend(value.clone());
+        }
+
         return moves.is_empty()
     }
 
@@ -439,7 +550,6 @@ impl Game {
 
     }
 
-    //TODO: Remove comments
     fn generate_legal_moves(&self, square: Square) -> Result<Vec<Action>, String> {
 
         let psuedo_moves = self.generate_psuedo_moves(square)?;
@@ -793,7 +903,6 @@ impl Game {
         panic!("COULD NOT FIND KING!");
     }
 
-    //TODO: REMOVE COMMENTS
     fn is_checked(&self, team: Team) -> bool {
 
         let mut board = self.clone();
@@ -893,6 +1002,7 @@ impl Game {
             grid: this_grid,
             player: Team::White,
             history: Vec::<Action>::new(),
+            moveset: HashMap::new()
         }
 
     }

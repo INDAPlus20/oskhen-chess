@@ -6,7 +6,7 @@ fn main() {
     let mut game = rustchessian::Game::new();
 
     loop {
-        if game.get_gamestate() != rustchessian::Gamestate::InProgress {
+        if game.start_round() != rustchessian::Gamestate::InProgress {
             println!("GAME OVER!");
             break;
         }
