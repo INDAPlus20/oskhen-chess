@@ -20,27 +20,30 @@ mod tests {
     #[test]
     fn castling() {
         let gamestate ="
-        RB XX XX XX KB BB NB RB
-        PB PB PB PB PB PB PB PB
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX PW PW PW PW
-        RW XX XX XX KW BW NW RW
+        RB XX BB QB KB XX XX RB
+        XX XX PB XX BB PB PB PB
+        PB XX NB PB XX NB XX XX
+        XX PB XX XX PB XX XX XX
+        XX XX XX XX PW XX XX XX
+        XX BW PW XX XX NW XX XX
+        PW PW XX PW XX PW PW PW
+        RW NW BW QW RW XX KW XX
         ";
+
         let mut game = Game::board_from_blocks(gamestate);
+        game.player = Team::Black;
         game.start_round();
-        game.make_move_from_coordinates("e1", "c1");
+        game.make_move_from_coordinates("e8", "g8");
+
         let expectedgamestr = "
-        RB XX XX XX KB BB NB RB
-        PB PB PB PB PB PB PB PB
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX XX XX XX XX
-        XX XX XX XX PW PW PW PW
-        XX XX KW RW XX BW NW RW
+        RB XX BB QB XX RB KB XX
+        XX XX PB XX BB PB PB PB
+        PB XX NB PB XX NB XX XX
+        XX PB XX XX PB XX XX XX
+        XX XX XX XX PW XX XX XX
+        XX BW PW XX XX NW XX XX
+        PW PW XX PW XX PW PW PW
+        RW NW BW QW RW XX KW XX
         ";
         let expectedgame = Game::board_from_blocks(expectedgamestr);
         assert_eq!(game, expectedgame)
@@ -178,6 +181,8 @@ mod tests {
 
 }
 
+pub mod pgn;
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 struct Square {
     piece: Option<Piece>,
@@ -189,7 +194,7 @@ enum Team {
     Black,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum Actiontype {
     Regular,
     Castling,
@@ -293,6 +298,37 @@ fn promotion_prompt() -> Rank {
         };
         return choice;
     }
+}
+
+fn coordinate_from_string(coordinate: &str) -> Result<(usize, usize), String> {
+    if coordinate.len() != 2 {
+        return Err("Invalid coordinate".to_string())
+    }
+    let column: usize = match coordinate.chars().nth(0).unwrap().to_ascii_lowercase() {
+        'a' => 0,
+        'b' => 1,
+        'c' => 2,
+        'd' => 3,
+        'e' => 4,
+        'f' => 5,
+        'g' => 6,
+        'h' => 7,
+        _ => return Err("Invalid coordinate!".to_string())
+    };
+    let row: usize = coordinate
+        .chars()
+        .nth(1)
+        .unwrap()
+        .to_digit(10)
+        .expect("Invalid coordinate!") as usize;
+    
+    if row > 8 {
+        return Err("Invalid coordinate!".to_string());
+    }
+    
+    let coordinates = (column, row-1);
+
+    Ok(coordinates)
 }
 
 impl Game {
@@ -453,7 +489,7 @@ impl Game {
     }
 
     pub fn gen_move_from_string(&self, coordinates: &str) -> Result<Vec<Action>, String> {
-        let coordinates_tuple = self.coordinate_from_string(coordinates)?;
+        let coordinates_tuple = coordinate_from_string(coordinates)?;
         let this_square = self.square_from_string(coordinates)?;
 
         if this_square.piece.is_none() {
@@ -477,40 +513,9 @@ impl Game {
         Ok(moveset)
     }
 
-    fn coordinate_from_string(&self, coordinate: &str) -> Result<(usize, usize), String> {
-        if coordinate.len() != 2 {
-            return Err("Invalid coordinate".to_string())
-        }
-        let column: usize = match coordinate.chars().nth(0).unwrap().to_ascii_lowercase() {
-            'a' => 0,
-            'b' => 1,
-            'c' => 2,
-            'd' => 3,
-            'e' => 4,
-            'f' => 5,
-            'g' => 6,
-            'h' => 7,
-            _ => return Err("Invalid coordinate!".to_string())
-        };
-        let row: usize = coordinate
-            .chars()
-            .nth(1)
-            .unwrap()
-            .to_digit(10)
-            .expect("Invalid coordinate!") as usize;
-        
-        if row > 8 {
-            return Err("Invalid coordinate!".to_string());
-        }
-        
-        let coordinates = (column, row-1);
-
-        Ok(coordinates)
-    }
-
     fn square_from_string(&self, coordinate: &str) -> Result<Square, String> {
         
-        let coordinates: (usize, usize) = self.coordinate_from_string(coordinate)?;
+        let coordinates: (usize, usize) = coordinate_from_string(coordinate)?;
 
         let this_square = Square {
             piece: self.grid[coordinates.0][coordinates.1].piece,
@@ -827,7 +832,7 @@ impl Game {
                 for action in self.history.iter() {
                     match action.from.piece.unwrap().rank {
                         Rank::Rook => {
-                            if action.from.coordinate.0 == 0 {
+                            if action.from.coordinate.0 == 0 && action.from.coordinate.1 == this_square.coordinate.1{
                                 left_rook_flag = false;
                             }
                         }
@@ -861,7 +866,7 @@ impl Game {
                 for action in self.history.iter() {
                     match action.from.piece.unwrap().rank {
                         Rank::Rook => {
-                            if action.from.coordinate.0 == 7 {
+                            if action.from.coordinate.0 == 7 && action.from.coordinate.1 == this_square.coordinate.1 {
                                 right_rook_flag = false;
                             }
                         }
