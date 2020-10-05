@@ -1,12 +1,6 @@
 #![allow(dead_code)] // No annoying warnings
 
-/*TODO: Memoization for move generation!
-
-In the start of every round, check for checkmate by geneerating all possible moves.
-At the same time, Save every vector of actions for each square in a lookup table.
-
-*/
-
+// CASTLING IS BROKEN THROUGH HISTORY!
 
 use std::io::{self, BufRead};
 use std::{convert::TryInto, fmt};

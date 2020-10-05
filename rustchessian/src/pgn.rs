@@ -1,5 +1,13 @@
 use crate as rustchessian;
 
+/*
+Todo:
+Pawn promotion
+Resolve ambiguity, correctly parse
+    *   Nge2
+    *   Ng3e2
+*/
+
 fn main() {
 
     let content = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {This opening is called the Ruy Lopez.}
@@ -15,6 +23,8 @@ fn main() {
     
 
 }
+
+// lajhsdfuilkhasdlkuifh
 
 pub fn parse_png(pgnfile: String) -> Vec<rustchessian::Action> {
 
