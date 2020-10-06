@@ -2,7 +2,6 @@ use rustchessian;
 use std::io::{self, BufRead};
 
 fn main() {
-
     let content = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {This opening is called the Ruy Lopez.}
     4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Nb8 10. d4 Nbd7
     11. c4 c6 12. cxb5 axb5 13. Nc3 Bb7 14. Bg5 b4 15. Nb1 h6 16. Bh4 c5 17. dxe5
@@ -16,7 +15,7 @@ fn main() {
     return;
     //let mut game = rustchessian::Game::new();
 
-    let gamestate ="
+    let gamestate = "
     RB XX BB QB KB XX XX RB
     XX XX PB XX BB PB PB PB
     PB XX NB PB XX NB XX XX
@@ -28,8 +27,6 @@ fn main() {
     ";
 
     let mut game = rustchessian::Game::board_from_blocks(gamestate);
-
-
 
     let mut game = rustchessian::Game::new();
 
@@ -50,9 +47,9 @@ fn main() {
                 Err(i) => {
                     println!("{}", i);
                     continue;
-                },
+                }
             };
-        
+
             println!("Choose move index: ");
             let input_index = match io::stdin()
                 .lock()
@@ -60,15 +57,16 @@ fn main() {
                 .next()
                 .unwrap()
                 .unwrap()
-                .parse::<usize>() {
-                    Ok(i) => i-1,
-                    Err(i) => {
-                        println!("{}", i);
-                        continue;
-                    }
-                };
+                .parse::<usize>()
+            {
+                Ok(i) => i - 1,
+                Err(i) => {
+                    println!("{}", i);
+                    continue;
+                }
+            };
             if input_index >= moves.len() {
-                println!("Invalid option!");    
+                println!("Invalid option!");
                 continue;
             }
             game.make_move(moves[input_index]);

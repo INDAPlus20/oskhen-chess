@@ -9,7 +9,6 @@ Resolve ambiguity, correctly parse
 */
 
 fn main() {
-
     let content = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {This opening is called the Ruy Lopez.}
     4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Nb8 10. d4 Nbd7
     11. c4 c6 12. cxb5 axb5 13. Nc3 Bb7 14. Bg5 b4 15. Nb1 h6 16. Bh4 c5 17. dxe5
@@ -17,22 +16,22 @@ fn main() {
     23. Ne5 Rae8 24. Bxf7+ Rxf7 25. Nxf7 Rxe1+ 26. Qxe1 Kxf7 27. Qe3 Qg5 28. Qxg5
     hxg5 29. b3 Ke6 30. a3 Kd6 31. axb4 cxb4 32. Ra5 Nd5 33. f3 Bc8 34. Kf2 Bf5
     35. Ra7 g6 36. Ra6+ Kc5 37. Ke1 Nf4 38. g3 Nxh3 39. Kd2 Kb5 40. Rd6 Kc5 41. Ra6
-    Nf2 42. g4 Bd3 43. Re6 1/2-1/2".to_string();
+    Nf2 42. g4 Bd3 43. Re6 1/2-1/2"
+        .to_string();
 
     parse_png(content);
-    
-
 }
 
 pub fn parse_png(pgnfile: String) -> Vec<rustchessian::Action> {
-
     let strmoves = parse_png_to_strmoves(pgnfile);
     let mut actions: Vec<rustchessian::Action> = Vec::new();
     let mut game = rustchessian::Game::new();
+    for (i, strmove) in strmoves.iter().enumerate() {
+        println!("movenumber: {}", (i+2)/2);
 
-    for strmove in strmoves {
-        game.start_round();
+        let gamestate = game.start_round();
         println!("player: {:?}", game.player);
+        println!("gamestate: {:?}", gamestate);
         println!("{}", game);
         let available_moves = game.moveset.clone();
         let index = strmove.rfind(char::is_numeric);
@@ -75,11 +74,12 @@ pub fn parse_png(pgnfile: String) -> Vec<rustchessian::Action> {
             continue;
         }
         let index = index.unwrap();
-        let strcoordinate: &str =  &strmove[(index-1)..(index+1)];
-        let to_coordinates = rustchessian::coordinate_from_string(strcoordinate).expect("Invalid coordinates!");
+        let strcoordinate: &str = &strmove[(index - 1)..(index + 1)];
+        let to_coordinates =
+            rustchessian::coordinate_from_string(strcoordinate).expect("Invalid coordinates!");
 
         let rank = match strmove.find(char::is_uppercase) {
-            Some(i ) => match strmove.chars().nth(i).unwrap() {
+            Some(i) => match strmove.chars().nth(i).unwrap() {
                 'P' => rustchessian::Rank::Pawn,
                 'R' => rustchessian::Rank::Rook,
                 'B' => rustchessian::Rank::Bishop,
@@ -87,7 +87,7 @@ pub fn parse_png(pgnfile: String) -> Vec<rustchessian::Action> {
                 'N' => rustchessian::Rank::Knight,
                 'K' => rustchessian::Rank::King,
                 _ => panic!("Piece letter not valid"),
-            }
+            },
             None => rustchessian::Rank::Pawn,
         };
 
@@ -95,12 +95,13 @@ pub fn parse_png(pgnfile: String) -> Vec<rustchessian::Action> {
 
         for maybe_moves in available_moves.values() {
             for action in maybe_moves.iter() {
-                if action.to.coordinate == ((to_coordinates.0 as isize), (to_coordinates.1 as isize)) {
+                if action.to.coordinate
+                    == ((to_coordinates.0 as isize), (to_coordinates.1 as isize))
+                {
                     //println!("maybe? {:?}. but no bcs {:?} isnt {:?}", action, action.from.piece.unwrap().rank, rank);
                     if action.from.piece.unwrap().rank == rank {
                         possible_actions.push(*action);
                     }
-                    
                 }
             }
         }
@@ -111,17 +112,79 @@ pub fn parse_png(pgnfile: String) -> Vec<rustchessian::Action> {
             actions.push(this_action);
             game.make_move(this_action);
             continue;
+        } else {
+            let column: isize;
+            let row: isize;
+            let mut offset: usize = 0;
+            if strmove.chars().nth(0).unwrap().is_uppercase() {
+                offset = 1;
+            }
+            if strmove.chars().nth(0 + offset).unwrap().is_numeric() {
+                row = strmove
+                    .chars()
+                    .nth(0 + offset)
+                    .unwrap()
+                    .to_digit(10)
+                    .unwrap() as isize;
+                for action in possible_actions {
+                    if action.from.coordinate.1 == row {
+                        actions.push(action);
+                        game.make_move(action);
+                        break;
+                    }
+                }
+            } else {
+                println!("{:?}", possible_actions);
+                column = char_to_column(strmove.chars().nth(0 + offset).unwrap());
+                if strmove.chars().nth(2).unwrap().is_numeric() {
+                    row = strmove
+                        .chars()
+                        .nth(1 + offset)
+                        .unwrap()
+                        .to_digit(10)
+                        .unwrap() as isize;
+                    for action in possible_actions {
+                        if action.from.coordinate.1 == row && action.from.coordinate.0 == column {
+                            actions.push(action);
+                            game.make_move(action);
+                            break;
+                        }
+                    }
+                } else {
+                    for action in possible_actions {
+                        if action.from.coordinate.0 == column {
+                            actions.push(action);
+                            game.make_move(action);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            println!("Broke on: {:?}\n\n with rank {:?}", strmove, rank);
+            //break;
         }
-
-        println!("Broke on: {:?}\n\n with rank {:?}", strmove, rank);
-        break;
     }
-
+    println!("{:?}", game.get_gamestate());
+    println!("{}", game);
     actions
 }
 
+fn char_to_column(c: char) -> isize {
+    match c {
+        'a' => 0,
+        'b' => 1,
+        'c' => 2,
+        'd' => 3,
+        'e' => 4,
+        'f' => 5,
+        'g' => 6,
+        'h' => 7,
+        _ => panic!("ERROR PARSING CHARACTER!")
+    }
+}
+
 fn parse_png_to_strmoves(pgnfile: String) -> Vec<String> {
-    
     let mut content = String::new();
 
     let mut comment_flag: bool = false;
@@ -139,22 +202,27 @@ fn parse_png_to_strmoves(pgnfile: String) -> Vec<String> {
     }
 
     let mut full_turns: Vec<String> = content
-    .split(|c| c == '.')
-    .map(|s| {
-        s.trim()
-            .split_whitespace()
-            .enumerate()
-            .filter(|&(i, _)| i < 2)
-            .map(|(_, e)| e)
-            .collect::<Vec<&str>>()
-            .join(" ")
-    }).collect::<Vec<String>>();
-    
+        .split(|c| c == '.')
+        .map(|s| {
+            s.trim()
+                .split_whitespace()
+                .enumerate()
+                .filter(|&(i, _)| i < 2)
+                .map(|(_, e)| e)
+                .collect::<Vec<&str>>()
+                .join(" ")
+        })
+        .collect::<Vec<String>>();
+
     full_turns.remove(0);
-    let mut half_turns:Vec<String>=full_turns.iter().flat_map(|s|s.split_whitespace()).map(|s|s.to_string()).collect();
+    let mut half_turns: Vec<String> = full_turns
+        .iter()
+        .flat_map(|s| s.split_whitespace())
+        .map(|s| s.to_string())
+        .collect();
 
     if half_turns.last().unwrap().contains("-") {
-        half_turns.remove(half_turns.len()-1);
+        half_turns.remove(half_turns.len() - 1);
     }
 
     half_turns

@@ -2,10 +2,9 @@
 
 // CASTLING IS BROKEN THROUGH HISTORY!
 
+use std::collections::HashMap;
 use std::io::{self, BufRead};
 use std::{convert::TryInto, fmt};
-use std::collections::HashMap;
-
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +12,7 @@ mod tests {
 
     #[test]
     fn castling() {
-        let gamestate ="
+        let gamestate = "
         RB XX BB QB KB XX XX RB
         XX XX PB XX BB PB PB PB
         PB XX NB PB XX NB XX XX
@@ -47,7 +46,7 @@ mod tests {
         let mut game = Game::new();
         game.start_round();
         game.make_move_from_coordinates("a2", "a4");
-        let expectedgamestr ="
+        let expectedgamestr = "
         RB NB BB QB KB BB NB RB
         PB PB PB PB PB PB PB PB
         XX XX XX XX XX XX XX XX
@@ -58,12 +57,11 @@ mod tests {
         RW NW BW QW KW BW NW RW
         ";
         let expectedgame = Game::board_from_blocks(expectedgamestr);
-        assert_eq!(game, expectedgame);  
+        assert_eq!(game, expectedgame);
     }
     #[test]
     fn enpassant() {
-
-        let gamestate ="
+        let gamestate = "
         RB NB BB QB KB BB NB RB
         PB XX PB PB PB PB PB PB
         XX XX XX XX XX XX XX XX
@@ -91,26 +89,21 @@ mod tests {
         ";
         let expectedgame = Game::board_from_blocks(expectedgamestr);
         assert_eq!(game, expectedgame)
-        
     }
 
     // TODO: Implement this test properly
-    fn promotion() {
-
-    }
+    fn promotion() {}
 
     #[test]
     fn king_at_start() {
-
         let game = Game::new();
         let coordinates = game.where_is_king(Team::White);
         assert_eq!(coordinates, (4, 0))
-
     }
 
     #[test]
     fn is_checked_true() {
-        let gamestate  ="
+        let gamestate = "
         RB NB BB XX KB BB NB RB
         PB PB PB XX PB PB PB PB
         XX XX XX XX XX XX XX XX
@@ -125,7 +118,7 @@ mod tests {
     }
     #[test]
     fn is_checked_false() {
-        let gamestate  ="
+        let gamestate = "
         RB NB BB XX KB BB NB RB
         PB PB PB XX PB PB PB PB
         XX XX XX XX XX XX XX XX
@@ -141,7 +134,7 @@ mod tests {
 
     #[test]
     fn is_checkmate() {
-        let gamestate  ="
+        let gamestate = "
         RB NB BB XX KB BB NB RB
         PB PB PB PB XX PB PB PB
         XX XX XX XX XX XX XX XX
@@ -157,7 +150,7 @@ mod tests {
     }
     #[test]
     fn is_not_checkmate() {
-        let gamestate  ="
+        let gamestate = "
         RB NB BB XX KB BB NB RB
         PB PB PB PB XX PB PB PB
         XX XX XX XX XX XX XX XX
@@ -170,7 +163,6 @@ mod tests {
         let mut game = Game::board_from_blocks(gamestate);
         let status = game.start_round();
         assert!(status != Gamestate::Checkmate)
-
     }
     #[test]
     fn has_moved_test() {
@@ -237,9 +229,9 @@ pub struct Game {
     grid: [[Square; 8]; 8],
     player: Team,
     history: Vec<Action>,
-    moveset: HashMap<(usize, usize), Vec<Action>>
+    moveset: HashMap<(usize, usize), Vec<Action>>,
 }
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Gamestate {
     InProgress,
     Checkmate,
@@ -261,7 +253,7 @@ fn not_same_team(team: Team, square: Square) -> bool {
     false
 }
 
-fn string_from_coordinates(coordinates: (isize, isize)) -> Result<String,String> {
+fn string_from_coordinates(coordinates: (isize, isize)) -> Result<String, String> {
     let mut position = String::new();
     let column = match coordinates.0 {
         0 => 'a',
@@ -311,7 +303,7 @@ fn promotion_prompt() -> Rank {
 
 fn coordinate_from_string(coordinate: &str) -> Result<(usize, usize), String> {
     if coordinate.len() != 2 {
-        return Err("Invalid coordinate".to_string())
+        return Err("Invalid coordinate".to_string());
     }
     let column: usize = match coordinate.chars().nth(0).unwrap().to_ascii_lowercase() {
         'a' => 0,
@@ -322,7 +314,7 @@ fn coordinate_from_string(coordinate: &str) -> Result<(usize, usize), String> {
         'f' => 5,
         'g' => 6,
         'h' => 7,
-        _ => return Err("Invalid coordinate!".to_string())
+        _ => return Err("Invalid coordinate!".to_string()),
     };
     let row: usize = coordinate
         .chars()
@@ -330,21 +322,18 @@ fn coordinate_from_string(coordinate: &str) -> Result<(usize, usize), String> {
         .unwrap()
         .to_digit(10)
         .expect("Invalid coordinate!") as usize;
-    
+
     if row > 8 {
         return Err("Invalid coordinate!".to_string());
     }
-    
-    let coordinates = (column, row-1);
+
+    let coordinates = (column, row - 1);
 
     Ok(coordinates)
 }
 
 impl Game {
-
     fn has_moved(&self, square: Square) -> bool {
-
-
         let mut has_moved = false;
         let coordinates = square.coordinate;
 
@@ -355,51 +344,41 @@ impl Game {
         }
 
         has_moved
-
     }
 
     fn memoize_all_moves(&mut self) {
+        let mut movemap: HashMap<(usize, usize), Vec<Action>> = HashMap::new();
 
-            let mut movemap: HashMap<(usize, usize), Vec<Action>> = HashMap::new();
-            
-
-            for row in self.grid.iter() {
-                for column in row.iter() {
-                    let coordinates: (usize, usize) = (
-                        column.coordinate.0.try_into().unwrap(),
-                        column.coordinate.1.try_into().unwrap(),
-                    );
-                    let moves = self.generate_legal_moves(*column);
-                    match moves {
-                        Ok(i) => {
-                            movemap.insert(
-                                coordinates,
-                                i,
-                            );
-                        },
-                        Err(_) => ()
-    
+        for row in self.grid.iter() {
+            for column in row.iter() {
+                let coordinates: (usize, usize) = (
+                    column.coordinate.0.try_into().unwrap(),
+                    column.coordinate.1.try_into().unwrap(),
+                );
+                let moves = self.generate_legal_moves(*column);
+                match moves {
+                    Ok(i) => {
+                        movemap.insert(coordinates, i);
                     }
+                    Err(_) => (),
                 }
-    
             }
-
-            self.moveset = movemap;
-    
         }
 
-    pub fn start_round(&mut self) -> Gamestate {
+        self.moveset = movemap;
+    }
 
+    pub fn start_round(&mut self) -> Gamestate {
         self.memoize_all_moves();
 
         self.get_gamestate()
     }
 
-    fn get_gamestate(&self) -> Gamestate{
+    pub fn get_gamestate(&self) -> Gamestate {
         if self.is_checkmate() {
             return Gamestate::Checkmate;
         }
-        return Gamestate::InProgress
+        return Gamestate::InProgress;
     }
 
     fn toggle_team(&mut self) {
@@ -530,7 +509,7 @@ impl Game {
         if moveset.is_empty() {
             return Err("No available moves for given square!".to_string());
         }
-        
+
         for (index, movement) in moveset.iter().enumerate() {
             println!("{}. {}", index + 1, movement);
         }
@@ -539,29 +518,26 @@ impl Game {
     }
 
     fn square_from_string(&self, coordinate: &str) -> Result<Square, String> {
-        
         let coordinates: (usize, usize) = coordinate_from_string(coordinate)?;
 
         let this_square = Square {
             piece: self.grid[coordinates.0][coordinates.1].piece,
-            coordinate: ((coordinates.0 as isize), (coordinates.1 as isize))
+            coordinate: ((coordinates.0 as isize), (coordinates.1 as isize)),
         };
         Ok(this_square)
     }
 
     fn is_checkmate(&self) -> bool {
-
         let mut moves: Vec<Action> = Vec::new();
 
         for value in self.moveset.values() {
             moves.extend(value.clone());
         }
 
-        return moves.is_empty()
+        return moves.is_empty();
     }
 
     fn generate_all_moves(&self) -> Result<Vec<Action>, String> {
-
         let mut possible_moves = Vec::<Action>::new();
 
         for row in self.grid.iter() {
@@ -569,19 +545,15 @@ impl Game {
                 let moves = self.generate_legal_moves(*column);
                 match moves {
                     Ok(i) => possible_moves.extend(i),
-                    Err(_) => ()
-
+                    Err(_) => (),
                 }
             }
-
         }
 
         Ok(possible_moves)
-
     }
 
     fn generate_legal_moves(&self, square: Square) -> Result<Vec<Action>, String> {
-
         let psuedo_moves = self.generate_psuedo_moves(square)?;
         let mut legal_moves = Vec::<Action>::new();
 
@@ -591,7 +563,6 @@ impl Game {
             if !clone.is_checked(clone.player.opposite()) {
                 legal_moves.push(*pmove);
             }
-
         }
         Ok(legal_moves)
     }
@@ -603,7 +574,7 @@ impl Game {
         };
 
         if self.player != piece.team {
-            return Err("Cannot move enemy piece!".to_string())
+            return Err("Cannot move enemy piece!".to_string());
         }
 
         let moveset: Vec<Action> = match piece.rank {
@@ -681,7 +652,6 @@ impl Game {
         self.gen_scaled_moveset_from_offset(this_square, offsets, false)
     }
 
-    
     //TODO: Clean up!
     fn gen_moveset_pawn(&self, this_square: Square) -> Vec<Action> {
         let mut available_moves = Vec::<Action>::new();
@@ -835,10 +805,9 @@ impl Game {
         available_moves.extend(self.gen_scaled_moveset_from_offset(this_square, offsets, true));
 
         // | Castling
-        
+
         //King hasn't moved
         if !self.has_moved(this_square) {
-            
             // | Left-rook
 
             let mut left_rook_flag = true;
@@ -848,8 +817,7 @@ impl Game {
                 if self.has_moved(self.square_from_string("a1").unwrap()) {
                     left_rook_flag = false;
                 }
-            }
-            else {
+            } else {
                 if self.has_moved(self.square_from_string("a8").unwrap()) {
                     left_rook_flag = false;
                 }
@@ -863,7 +831,6 @@ impl Game {
                 }
                 new_x -= 1;
             }
-
 
             if left_rook_flag {
                 let new_square = Square {
@@ -879,7 +846,7 @@ impl Game {
                 available_moves.push(this_action);
             }
 
-            // | Right-rook      
+            // | Right-rook
 
             let mut right_rook_flag = true;
 
@@ -888,8 +855,7 @@ impl Game {
                 if self.has_moved(self.square_from_string("h1").unwrap()) {
                     right_rook_flag = false;
                 }
-            }
-            else {
+            } else {
                 if self.has_moved(self.square_from_string("h8").unwrap()) {
                     right_rook_flag = false;
                 }
@@ -930,7 +896,7 @@ impl Game {
                     if piece.rank == Rank::King {
                         //println!("X: {:?}, {:?}", column, self.player);
                         if piece.team == team {
-                            return column.coordinate
+                            return column.coordinate;
                         }
                     }
                 }
@@ -940,13 +906,19 @@ impl Game {
     }
 
     fn is_checked(&self, team: Team) -> bool {
-
         let mut board = self.clone();
         board.player = team;
 
         let king_coordinates = board.where_is_king(team);
 
-        let ranks: [Rank; 6] = [Rank::Pawn, Rank::Rook, Rank::Knight, Rank::Bishop, Rank::Queen, Rank::King];
+        let ranks: [Rank; 6] = [
+            Rank::Pawn,
+            Rank::Rook,
+            Rank::Knight,
+            Rank::Bishop,
+            Rank::Queen,
+            Rank::King,
+        ];
 
         for rank in ranks.iter() {
             let piece = Piece {
@@ -969,7 +941,6 @@ impl Game {
                         }
                     }
                 }
-
             }
         }
         false
@@ -1005,10 +976,7 @@ impl Game {
     }
 
     pub fn board_from_blocks(gamestate: &str) -> Game {
-        let blockstates: Vec<&str> = gamestate
-            .trim()
-            .split_whitespace()
-            .collect();
+        let blockstates: Vec<&str> = gamestate.trim().split_whitespace().collect();
 
         let placeholder_square = Square {
             // Fix array initalization to not require this workaround!
@@ -1028,7 +996,7 @@ impl Game {
         for row in 0..8 {
             for column in 0..8 {
                 let this_square: Square = Square {
-                    piece: piece_objects[8 * (7-row) + column],
+                    piece: piece_objects[8 * (7 - row) + column],
                     coordinate: (column.try_into().unwrap(), row.try_into().unwrap()),
                 };
                 this_grid[column][row] = this_square;
@@ -1038,13 +1006,12 @@ impl Game {
             grid: this_grid,
             player: Team::White,
             history: Vec::<Action>::new(),
-            moveset: HashMap::new()
+            moveset: HashMap::new(),
         }
-
     }
 
     pub fn new() -> Game {
-        let gamestate  ="
+        let gamestate = "
         RB NB BB QB KB BB NB RB
         PB PB PB PB PB PB PB PB
         XX XX XX XX XX XX XX XX
@@ -1056,9 +1023,6 @@ impl Game {
         ";
         Game::board_from_blocks(gamestate)
     }
-
-
-
 }
 
 impl fmt::Display for Square {
