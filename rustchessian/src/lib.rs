@@ -226,11 +226,12 @@ pub enum Rank {
 }
 #[derive(Clone)]
 pub struct Game {
-    grid: [[Square; 8]; 8],
-    player: Team,
-    history: Vec<Action>,
-    moveset: HashMap<(usize, usize), Vec<Action>>,
+    pub grid: [[Square; 8]; 8],
+    pub player: Team,
+    pub history: Vec<Action>,
+    pub moveset: HashMap<(usize, usize), Vec<Action>>,
 }
+
 #[derive(PartialEq, Debug)]
 pub enum Gamestate {
     InProgress,
@@ -333,6 +334,7 @@ fn coordinate_from_string(coordinate: &str) -> Result<(usize, usize), String> {
 }
 
 impl Game {
+
     fn has_moved(&self, square: Square) -> bool {
         let mut has_moved = false;
         let coordinates = square.coordinate;
