@@ -186,7 +186,7 @@ pub mod pgn;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Square {
-    piece: Option<Piece>,
+    pub piece: Option<Piece>,
     coordinate: (isize, isize),
 }
 #[derive(Debug, Copy, Clone, PartialEq)]

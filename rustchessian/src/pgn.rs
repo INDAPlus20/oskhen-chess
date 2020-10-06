@@ -187,14 +187,25 @@ fn char_to_column(c: char) -> isize {
 fn parse_png_to_strmoves(pgnfile: String) -> Vec<String> {
     let mut content = String::new();
 
+    // Replace with regex
     let mut comment_flag: bool = false;
+    let mut property_flag = false;
+
     for c in pgnfile.chars() {
+
         if c == '{' {
             comment_flag = true;
         }
-        if comment_flag {
+        else if c == '[' {
+            property_flag = true;
+        }
+
+        if comment_flag || property_flag {
             if c == '}' {
                 comment_flag = false;
+            }
+            else if c == ']' {
+                property_flag = false;
             }
             continue;
         }
