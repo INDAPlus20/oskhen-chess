@@ -3,7 +3,7 @@ use std::io::{self, BufRead};
 use std::fs;
 
 fn main() {
-    let PATH = "../replays/AdamsLast.pgn";
+    let PATH = "../replays/Lloyds.pgn";
     let content = fs::read_to_string(PATH).unwrap();
     println!("{}", content);
     rustchessian::pgn::parse_png(content);
