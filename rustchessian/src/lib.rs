@@ -172,7 +172,22 @@ mod tests {
         assert!(status != Gamestate::Checkmate)
 
     }
-
+    #[test]
+    fn has_moved_test() {
+        let mut game = Game::new();
+        game.start_round();
+        game.make_move_from_coordinates("a2", "a4");
+        let square = game.square_from_string("a2").unwrap();
+        assert!(game.has_moved(square))
+    }
+    #[test]
+    fn has_not_moved_test() {
+        let mut game = Game::new();
+        game.start_round();
+        game.make_move_from_coordinates("a2", "a4");
+        let square = game.square_from_string("b2").unwrap();
+        assert!(!game.has_moved(square))
+    }
 }
 
 pub mod pgn;
@@ -326,6 +341,22 @@ fn coordinate_from_string(coordinate: &str) -> Result<(usize, usize), String> {
 }
 
 impl Game {
+
+    fn has_moved(&self, square: Square) -> bool {
+
+
+        let mut has_moved = false;
+        let coordinates = square.coordinate;
+
+        for action in self.history.iter() {
+            if action.from.coordinate == coordinates {
+                has_moved = true
+            }
+        }
+
+        has_moved
+
+    }
 
     fn memoize_all_moves(&mut self) {
 
@@ -803,18 +834,28 @@ impl Game {
         ];
         available_moves.extend(self.gen_scaled_moveset_from_offset(this_square, offsets, true));
 
-        //Special move!
+        // | Castling
+        
+        //King hasn't moved
+        if !self.has_moved(this_square) {
+            
+            // | Left-rook
 
-        let mut has_king_moved = false;
-        for action in self.history.iter() {
-            match action.from.piece.unwrap().rank {
-                Rank::King => has_king_moved = true,
-                _ => (),
-            };
-        }
-        if !has_king_moved {
-            //Check left rook
             let mut left_rook_flag = true;
+
+            // Left rook hasn't moved
+            if self.player == Team::White {
+                if self.has_moved(self.square_from_string("a1").unwrap()) {
+                    left_rook_flag = false;
+                }
+            }
+            else {
+                if self.has_moved(self.square_from_string("a8").unwrap()) {
+                    left_rook_flag = false;
+                }
+            }
+
+            // All empty squares between left rook and king (from king_position to left_rook)
             let mut new_x = x - 1;
             while new_x > 0 {
                 if self.grid[new_x as usize][y as usize].piece.is_some() {
@@ -822,23 +863,14 @@ impl Game {
                 }
                 new_x -= 1;
             }
-            if left_rook_flag {
-                for action in self.history.iter() {
-                    match action.from.piece.unwrap().rank {
-                        Rank::Rook => {
-                            if action.from.coordinate.0 == 0 && action.from.coordinate.1 == this_square.coordinate.1{
-                                left_rook_flag = false;
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
+
+
             if left_rook_flag {
                 let new_square = Square {
                     piece: this_square.piece,
                     coordinate: (2, y),
                 };
+
                 let this_action = Action {
                     from: this_square,
                     to: new_square,
@@ -847,8 +879,24 @@ impl Game {
                 available_moves.push(this_action);
             }
 
-            //Check right rook
+            // | Right-rook      
+
             let mut right_rook_flag = true;
+
+            // Right rook hasn't moved
+            if self.player == Team::White {
+                if self.has_moved(self.square_from_string("h1").unwrap()) {
+                    right_rook_flag = false;
+                }
+            }
+            else {
+                if self.has_moved(self.square_from_string("h8").unwrap()) {
+                    right_rook_flag = false;
+                }
+            }
+
+            // All empty squares between right rook and king (from king_position to right rook)
+
             let mut new_x = x + 1;
             while new_x < 7 {
                 if self.grid[new_x as usize][y as usize].piece.is_some() {
@@ -856,18 +904,7 @@ impl Game {
                 }
                 new_x += 1;
             }
-            if right_rook_flag {
-                for action in self.history.iter() {
-                    match action.from.piece.unwrap().rank {
-                        Rank::Rook => {
-                            if action.from.coordinate.0 == 7 && action.from.coordinate.1 == this_square.coordinate.1 {
-                                right_rook_flag = false;
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
+
             if right_rook_flag {
                 let new_square = Square {
                     piece: this_square.piece,

@@ -17,14 +17,12 @@ fn main() {
     23. Ne5 Rae8 24. Bxf7+ Rxf7 25. Nxf7 Rxe1+ 26. Qxe1 Kxf7 27. Qe3 Qg5 28. Qxg5
     hxg5 29. b3 Ke6 30. a3 Kd6 31. axb4 cxb4 32. Ra5 Nd5 33. f3 Bc8 34. Kf2 Bf5
     35. Ra7 g6 36. Ra6+ Kc5 37. Ke1 Nf4 38. g3 Nxh3 39. Kd2 Kb5 40. Rd6 Kc5 41. Ra6
-    Nf2 42. g4 Bd3 43. Re6 1/2-1/2";
+    Nf2 42. g4 Bd3 43. Re6 1/2-1/2".to_string();
 
-    //parse_png(content);
+    parse_png(content);
     
 
 }
-
-// lajhsdfuilkhasdlkuifh
 
 pub fn parse_png(pgnfile: String) -> Vec<rustchessian::Action> {
 
