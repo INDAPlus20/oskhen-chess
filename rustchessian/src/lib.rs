@@ -193,12 +193,12 @@ mod tests {
 pub mod pgn;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-struct Square {
+pub struct Square {
     piece: Option<Piece>,
     coordinate: (isize, isize),
 }
 #[derive(Debug, Copy, Clone, PartialEq)]
-enum Team {
+pub enum Team {
     White,
     Black,
 }
@@ -219,12 +219,12 @@ pub struct Action {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-struct Piece {
-    team: Team,
-    rank: Rank,
+pub struct Piece {
+    pub team: Team,
+    pub rank: Rank,
 }
 #[derive(Debug, Copy, Clone, PartialEq)]
-enum Rank {
+pub enum Rank {
     Pawn,
     Rook,
     Knight,
