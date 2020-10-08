@@ -496,7 +496,15 @@ impl Game {
 
     pub fn gen_move_from_string(&self, coordinates: &str) -> Result<Vec<Action>, String> {
         let coordinates_tuple = coordinate_from_string(coordinates)?;
-        let this_square = self.square_from_string(coordinates)?;
+
+        let moves = self.gen_moves_from_coordinate(coordinates_tuple)?;
+        Ok(moves)
+
+    }
+
+    pub fn gen_moves_from_coordinate(&self, coordinates: (usize, usize)) -> Result<Vec<Action>, String> {
+
+        let this_square = self.square_from_coordinate(coordinates)?;
 
         if this_square.piece.is_none() {
             return Err("Square is empty!".to_string());
@@ -506,7 +514,7 @@ impl Game {
             return Err("Tried to move enemy piece!".to_string());
         }
 
-        let moveset = self.moveset[&coordinates_tuple].clone();
+        let moveset = self.moveset[&coordinates].clone();
 
         if moveset.is_empty() {
             return Err("No available moves for given square!".to_string());
@@ -517,16 +525,24 @@ impl Game {
         }
 
         Ok(moveset)
+
     }
 
     fn square_from_string(&self, coordinate: &str) -> Result<Square, String> {
         let coordinates: (usize, usize) = coordinate_from_string(coordinate)?;
+        self.square_from_coordinate(coordinates)
+
+    }
+
+    fn square_from_coordinate(&self, coordinates: (usize, usize)) -> Result<Square, String> {
 
         let this_square = Square {
             piece: self.grid[coordinates.0][coordinates.1].piece,
             coordinate: ((coordinates.0 as isize), (coordinates.1 as isize)),
         };
+
         Ok(this_square)
+
     }
 
     fn is_checkmate(&self) -> bool {
