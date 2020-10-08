@@ -1,7 +1,5 @@
 #![allow(dead_code)] // No annoying warnings
 
-// CASTLING IS BROKEN THROUGH HISTORY!
-
 use std::collections::HashMap;
 use std::io::{self, BufRead};
 use std::{convert::TryInto, fmt};
@@ -576,8 +574,12 @@ impl Game {
         let mut legal_moves = Vec::<Action>::new();
 
         for pmove in psuedo_moves.iter() {
+            let mut fake_move = pmove.to_owned();
+            if fake_move.movetype == Actiontype::Promotion {
+                fake_move.movetype = Actiontype::Regular;
+            }
             let mut clone: Game = self.clone();
-            clone.make_move(*pmove);
+            clone.make_move(fake_move);
             if !clone.is_checked(clone.player.opposite()) {
                 legal_moves.push(*pmove);
             }
