@@ -206,7 +206,7 @@ enum Actiontype {
 #[derive(Debug, Copy, Clone)]
 pub struct Action {
     from: Square,
-    to: Square,
+    pub to: Square,
     movetype: Actiontype,
 }
 
