@@ -387,16 +387,16 @@ impl Game {
         self.player = self.player.opposite();
     }
 
-    fn make_move_from_coordinates(&mut self, from: &str, to: &str) {
+    pub fn make_move_from_coordinates(&mut self, from: &str, to: &str) -> Result<String, String>{
         let moves = self.gen_move_from_string(&from).unwrap();
         for movement in moves.iter() {
             let strmove = format!("{}", movement);
             if strmove == to {
                 self.make_move(*movement);
-            } else {
-                println!("{} : {}", strmove, to);
+                return Ok("Success".to_string());
             }
         }
+        return Err("Requested move not found".to_string())
     }
 
     // Set target to origin, origin to empty. Handle captures, add to history. Change player turn.
