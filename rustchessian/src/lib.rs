@@ -518,10 +518,6 @@ impl Game {
             return Err("No available moves for given square!".to_string());
         }
 
-        for (index, movement) in moveset.iter().enumerate() {
-            println!("{}. {}", index + 1, movement);
-        }
-
         Ok(moveset)
 
     }
@@ -914,7 +910,6 @@ impl Game {
                 if column.piece.is_some() {
                     let piece = column.piece.unwrap();
                     if piece.rank == Rank::King {
-                        //println!("X: {:?}, {:?}", column, self.player);
                         if piece.team == team {
                             return column.coordinate;
                         }
